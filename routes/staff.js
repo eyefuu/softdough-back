@@ -62,7 +62,7 @@ router.post('/add', (req, res, next) => {
 
 
 router.get('/read', (req, res, next) => {
-  var query = 'select *from staff'
+  var query = 'select * from staff'
   connection.query(query, (err, results) => {
     if (!err) {
       return res.status(200).json(results);

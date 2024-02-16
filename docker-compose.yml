@@ -1,0 +1,35 @@
+version: '3'
+services:
+  softdough-api:
+    build: .
+    ports:
+      - "8000:8000"
+  db:
+    image: mysql:latest
+    restart: always
+    container_name: db
+    environment:
+      MYSQL_ROOT_PASSWORD: P@ssword1234
+      MYSQL_DATABASE: softdough2
+    # command: --default-authentication-plugin=mysql_native_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: phpmyadmin
+    restart: always
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: P@ssword1234
+    ports:
+      - "8081:80"
+    depends_on:
+      - db
+volumes:
+  mysql_data:
+    driver: local
