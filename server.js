@@ -12,11 +12,15 @@ const ownerRoute = require('./routes/owner')
 const staffRoute = require('./routes/staff')
 const ingredientRoute = require('./routes/ingredient')
 const productRoute = require('./routes/product')
+const salesmenuRoute = require('./routes/salesmenu')
+
 
 app.use('/owner',ownerRoute)
 app.use('/staff',staffRoute)
 app.use('/ingredient',ingredientRoute)
 app.use('/product',productRoute)
+app.use('/salesmenu',salesmenuRoute)
+
 
 
 app.get("/home",(req,res)=>{

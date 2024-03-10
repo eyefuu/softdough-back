@@ -1,28 +1,9 @@
-// const express = require("express");
-// const connection = require("../connection");
-// // const { route } = require("./ingredient");
-// const router = express.Router();
-// const multer = require('multer');
-
-// const storage = multer.memoryStorage();
-// const upload = multer({ storage: storage }).single('image');
-
-// module.exports = upload;
-
-// const express = require("express");
-// const connection = require("../connection");
-// // const { route } = require("./ingredient");
-// const router = express.Router();
-// const multer = require('multer');
-
-// const storage = multer.memoryStorage();
-// const upload = multer({ storage: storage }).single('image');
 
 //เพิ่มapi สำหรับหน่วย มีประเภทหน่วย
 const express = require("express");
 const connection = require("../connection");
-const multer = require('multer');
 
+const multer = require('multer');
 const router = express.Router();
 const upload = multer();
 
@@ -31,31 +12,6 @@ router.post('/addcat', (req, res, next) => {
     let cat = req.body;
     query = "insert into productCategory (pdc_name) values(?)";
     connection.query(query, [cat.pdc_name], (err, results) => {
-        if (!err) {
-            return res.status(200).json({ message: "success" });
-        } else {
-            console.error("MySQL Error:", err);
-            return res.status(500).json({ message: "error", error: err });
-        }
-    });
-})
-
-router.post('/addsmt', (req, res, next) => {
-    let sm = req.body;
-    query = "insert into salesmenuType (smt_name,unit,qty_per_unit) values(?,?,?)";
-    connection.query(query, [sm.smt_name, sm.unit, sm.qty_per_unit], (err, results) => {
-        if (!err) {
-            return res.status(200).json({ message: "success" });
-        } else {
-            console.error("MySQL Error:", err);
-            return res.status(500).json({ message: "error", error: err });
-        }
-    });
-})
-router.post('/addsm', (req, res, next) => {
-    let sm = req.body;
-    query = "insert into salesmenu (smt_id,	sm_name,sm_price,status,fix,picture	) values(?,?,?,?,?,?)";
-    connection.query(query, [sm.smt_id, sm.sm_name, sm.sm_price, sm.status, sm.fix, sm.picture], (err, results) => {
         if (!err) {
             return res.status(200).json({ message: "success" });
         } else {
@@ -76,30 +32,6 @@ router.get('/readcat', (req, res, next) => {
     });
 })
 
-
-router.get('/readsmt', (req, res, next) => {
-    var query = 'select *from salesmenuType'
-    connection.query(query, (err, results) => {
-        if (!err) {
-            return res.status(200).json(results);
-        } else {
-            return res.status(500).json(err);
-        }
-    });
-})
-
-router.get('/readsm', (req, res, next) => {
-    var query = 'select *from salesmenu'
-    connection.query(query, (err, results) => {
-        if (!err) {
-            return res.status(200).json(results);
-        } else {
-            return res.status(500).json(err);
-        }
-    });
-})
-
-
 router.patch('/updatecat/:pdc_id', (req, res, next) => {
     const pdc_id = req.params.pdc_id;
     const sm = req.body;
@@ -117,22 +49,7 @@ router.patch('/updatecat/:pdc_id', (req, res, next) => {
     });
 });
 
-router.patch('/updatesmt/:smt_id', (req, res, next) => {
-    const smt_id = req.params.smt_id;
-    const sm = req.body;
-    var query = "UPDATE salesmenuType SET pdc_name=? WHERE smt_id=?";
-    connection.query(query, [cat.pdc_name, pdc_id], (err, results) => {
-        if (!err) {
-            if (results.affectedRows === 0) {
-                console.error(err);
-                return res.status(404).json({ message: "id does not found" });
-            }
-            return res.status(200).json({ message: "update success" });
-        } else {
-            return res.status(500).json(err);
-        }
-    });
-});
+
 //pd new
 //กดไปเรื่อยๆ id บวกไปเรื่อยๆแบบไม่เข้าไปก็บวกไป เริ่มต้นที่8ละล่าสุด
 //pd_idไม่เข้าในrecipe
@@ -389,7 +306,7 @@ router.patch('/updatesmt/:smt_id', (req, res, next) => {
 //                 });
 //                 return;
 //             }
-        
+
 //             if (!productResult || !productResult.insertId) {
 //                 console.error('Product insertion result is invalid:', productResult);
 //                 connection.rollback(() => {
@@ -397,9 +314,9 @@ router.patch('/updatesmt/:smt_id', (req, res, next) => {
 //                 });
 //                 return;
 //             }
-        
+
 //             const productId = productResult.insertId;
-        
+
 
 //             if (recipe) {
 //                 recipe.pd_id = productId;
@@ -471,7 +388,7 @@ router.patch('/updatesmt/:smt_id', (req, res, next) => {
 //         });
 //     });
 // });
- 
+
 
 // module.exports = router;
 
@@ -676,6 +593,7 @@ const sharp = require('sharp');
 
 
 //+recipe 
+//ถ้าจะมีปห น่าจะมีแค่พวก detail ที่ส่งเป็นลิสท์ จาห tsx
 router.post('/addProductWithRecipe', upload.single('picture'), async (req, res) => {
     const { pd_name, pd_qtyminimum, status, pdc_id, recipe, recipedetail } = req.body;
     const imageBuffer = req.file && req.file.buffer ? req.file.buffer : null;
@@ -732,16 +650,30 @@ router.post('/addProductWithRecipe', upload.single('picture'), async (req, res) 
 
                         const recipeId = recipeResult.insertId;
 
+                        // // เพิ่มข้อมูลของ "recipedetail"
+                        // const values = recipedetail.map(detail => [recipeId, detail.ind_id, detail.ingredients_qty, detail.un_id]);
+                        // const recipeDetailQuery = `INSERT INTO recipedetail (rc_id, ind_id, ingredients_qty, un_id) VALUES ?`;
+
+                        // connection.query(recipeDetailQuery, [values], (err, detailResults) => {
+                        //     if (err) {
+                        //         connection.rollback(() => {
+                        //             return res.status(500).json({ message: 'Error inserting recipe details', error: err });
+                        //         });
+                        //     }
                         // เพิ่มข้อมูลของ "recipedetail"
                         const values = recipedetail.map(detail => [recipeId, detail.ind_id, detail.ingredients_qty, detail.un_id]);
-                        const recipeDetailQuery = `INSERT INTO recipedetail (rc_id, ind_id, ingredients_qty, un_id) VALUES ?`;
+                        const recipeDetailQuery = `INSERT INTO recipedetail (rc_id, ind_id, ingredients_qty, un_id, deleted_at) VALUES ?`;
 
-                        connection.query(recipeDetailQuery, [values], (err, detailResults) => {
+                        // เพิ่ม deleted_at = null ในแต่ละรายการที่เพิ่ม
+                        const valuesWithDeletedAtNull = values.map(value => [...value, null]);
+
+                        connection.query(recipeDetailQuery, [valuesWithDeletedAtNull], (err, detailResults) => {
                             if (err) {
                                 connection.rollback(() => {
                                     return res.status(500).json({ message: 'Error inserting recipe details', error: err });
                                 });
                             }
+
 
                             connection.commit((err) => {
                                 if (err) {
@@ -908,6 +840,7 @@ router.post('/addProductWithRecipe', upload.single('picture'), async (req, res) 
 // }
 
 //read
+
 router.get('/products/:pd_id', async (req, res) => {
     const productId = req.params.pd_id;
 
@@ -925,7 +858,7 @@ router.get('/products/:pd_id', async (req, res) => {
 
             // Extract product data from the database results
             const product = results[0];
-            
+
             // If the product contains picture data
             if (product.picture) {
                 // Include the base64-encoded picture data in the response
@@ -938,6 +871,428 @@ router.get('/products/:pd_id', async (req, res) => {
     } catch (error) {
         console.error('Error retrieving product:', error);
         return res.status(500).json({ message: 'Error retrieving product', error });
+    }
+});
+
+// แก้ไข ยังไม่ลอง
+//เปลี่ยนจาก หรือ เป็นเช็คทีละอัน ไม่สมประกอบในส่วน ดีเทล รีซีบไม่มี 
+//กรณีแก้อันเดียว หรือไม่แก้ทั้งหมด
+//เงื่อนไข ยังมีปัญหากรณีทั้งแอด ลบ อัปเดต ใน req เดียว
+// router.patch('/editProductWithRecipe/:pd_id', upload.single('picture'), async (req, res) => {
+//     const pd_id = req.params.pd_id;
+
+//     const { pd_name, pd_qtyminimum, status, pdc_id, recipe, recipedetail } = req.body;
+//     const imageBuffer = req.file && req.file.buffer ? req.file.buffer : null;
+
+//     try {
+//         let imageBase64 = null;
+
+//         // ตรวจสอบว่ามีการอัปโหลดรูปภาพหรือไม่
+//         if (imageBuffer) {
+//             // ปรับขนาดรูปภาพ
+//             const resizedImageBuffer = await sharp(imageBuffer)
+//                 .resize({ width: 300, height: 300 })
+//                 .toBuffer();
+
+//             // แปลงข้อมูลรูปภาพเป็น base64
+//             imageBase64 = resizedImageBuffer.toString('base64');
+//         }
+
+//         const productUpdateData = { pd_name, pd_qtyminimum, status, pdc_id };
+//         console.log(productUpdateData)
+//         if (imageBase64) {
+//             productUpdateData.picture = imageBase64;
+//         }
+
+//         connection.beginTransaction((err) => {
+//             if (err) {
+//                 return res.status(500).json({ message: 'Transaction start error', error: err });
+//             }
+
+//             connection.query('UPDATE products SET ?,updated_at = CURRENT_TIMESTAMP  WHERE pd_id = ?', [productUpdateData, pd_id], (err, productResult) => {
+//                 if (err) {
+//                     console.error('Error updating product:', err);
+//                     connection.rollback(() => {
+//                         res.status(500).json({ message: 'Error updating product', error: err });
+//                     });
+//                     return;
+//                 }
+
+//                 if (!productResult || productResult.affectedRows === 0) {
+//                     console.error('Product update result is invalid:', productResult);
+//                     connection.rollback(() => {
+//                         res.status(500).json({ message: 'Invalid product update result' });
+//                     });
+//                     return;
+//                 }
+//                 //มีปัญหา
+//                 console.log(recipe, recipedetail)
+//                 if (recipe && recipedetail) {
+
+//                     // const recipeUpdateData = { };
+
+//                     connection.query('UPDATE recipe SET ? WHERE pd_id = ?', [recipe, pd_id], (err, recipeResult) => {
+//                         if (err) {
+//                             console.error('Error updating product:', err);
+//                             connection.rollback(() => {
+//                                 res.status(500).json({ message: 'Error updating recipe', error: err });
+//                             });
+//                             return;
+//                         }
+
+
+//                         // Check if there are recipedetails to process
+//                         if (recipedetail && recipedetail.length > 0) {
+
+//                             const indIdsInReq = recipedetail.map(detail => detail.ind_id).filter(id => id !== undefined);
+//                             console.log("req", indIdsInReq)
+//                             // Fetch existing ind_ids from the database for the current recipe
+//                             const existingIndIdsQuery = `SELECT rd.ind_id, rd.rc_id
+//                         FROM recipedetail rd 
+//                         JOIN recipe r ON rd.rc_id = r.rc_id 
+//                         JOIN products p ON p.pd_id = r.pd_id 
+//                         where p.pd_id = ?`;
+//                             connection.query(existingIndIdsQuery, pd_id, (err, existingIndIds) => {
+//                                 if (err) {
+//                                     connection.rollback(() => {
+//                                         return res.status(500).json({ message: 'Error fetching existing ind_ids', error: err });
+//                                     });
+//                                 }
+
+
+//                                 // const rcIdsArray = existingIndIds.map(row => row.rc_id);
+//                                 // console.log("rcIdsArray", rcIdsArray);
+//                                 const rcId = existingIndIds.reduce((acc, current) => current.rc_id, null);
+//                                 console.log("rcId", rcId);
+
+//                                 const existingIndIdsArray = existingIndIds.map(row => row.ind_id);
+//                                 console.log("DB", existingIndIdsArray)
+//                                 const indIdsToUpdate = existingIndIdsArray.filter(id => indIdsInReq.includes(id));
+//                                 const indIdsToAdd = indIdsInReq.filter(id => !existingIndIdsArray.includes(id));
+//                                 const indIdsToDelete = existingIndIdsArray.filter(id => !indIdsInReq.includes(id));
+//                                 console.log("up", indIdsToUpdate, "add", indIdsToAdd, "de", indIdsToDelete)
+
+//                                 const updateData = [];
+//                                 const insertData = [];
+//                                 const deleteData = [];
+
+//                                 // Update recipedetail records
+//                                 if (indIdsToUpdate.length > 0) {
+//                                     // const updateQuery = `UPDATE recipedetail SET ?, deleted_at = NULL WHERE rc_id = ? AND ind_id IN (?)`;
+//                                     // // Construct your update query and execute it
+//                                     // connection.query(updateQuery, [recipedetail,rcIdsArray ,indIdsToUpdate], (err, updateResult) => {
+//                                     //     if (err) {
+//                                     //         connection.rollback(() => {
+//                                     //             return res.status(500).json({ message: 'Error updating recipedetail', error: err });
+//                                     //         });
+//                                     //     }
+//                                     // });
+//                                     // Update recipedetail records for each detail
+
+//                                     recipedetail.forEach(detail => {
+//                                         console.log(detail)
+//                                     const { ind_id, ingredients_qty, un_id } = detail;
+//                                     const updateQuery = `UPDATE recipedetail SET ingredients_qty = ?, un_id = ?, deleted_at = NULL WHERE rc_id = ? AND ind_id = ?`;
+//                                     // Execute the update query for each detail
+//                                     connection.query(updateQuery, [ingredients_qty, un_id, rcId, ind_id], (err, updateResult) => {
+//                                         if (err) {
+//                                             connection.rollback(() => {
+//                                                 return res.status(500).json({ message: 'Error updating recipedetail', error: err });
+//                                             });
+//                                         }
+//                                     });
+//                                     });
+
+//                                 }
+
+
+//                                 // Insert new recipedetail records
+//                                 if (indIdsToAdd.length > 0) {
+//                                     const insertQuery = `INSERT INTO recipedetail (rc_id, ind_id, ingredients_qty, un_id) VALUES ?`;
+//                                     const valuesToAdd = indIdsToAdd.map(id => [recipe.rc_id, id, ingredients_qty_value, un_id_value]);
+//                                     // Insert new records into recipedetail table
+//                                     connection.query(insertQuery, [valuesToAdd], (err, insertResult) => {
+//                                         if (err) {
+//                                             connection.rollback(() => {
+//                                                 return res.status(500).json({ message: 'Error inserting new recipedetail records', error: err });
+//                                             });
+//                                         }
+//                                     });
+//                                 }
+
+//                                 // Soft delete recipedetail records
+//                                 if (indIdsToDelete.length > 0) {
+//                                     const softDeleteQuery = `UPDATE recipedetail SET deleted_at = CURRENT_TIMESTAMP WHERE rc_id = ? AND ind_id IN (?)`;
+//                                     // Soft delete existing records in recipedetail table
+//                                     connection.query(softDeleteQuery, [recipe.rc_id, indIdsToDelete], (err, deleteResult) => {
+//                                         if (err) {
+//                                             connection.rollback(() => {
+//                                                 return res.status(500).json({ message: 'Error soft deleting recipedetail records', error: err });
+//                                             });
+//                                         }
+//                                     });
+//                                 }
+//                             });
+
+//                         }
+
+//                     });
+//                 }
+
+//                 // ยืนยันธุรกรรม
+//                 connection.commit((err) => {
+//                     if (err) {
+//                         connection.rollback(() => {
+//                             return res.status(500).json({ message: 'Transaction commit error', error: err });
+//                         });
+//                     }
+
+//                     return res.json({
+//                         productId: pd_id,
+//                         message: 'Product updated successfully!',
+//                     });
+//                 });
+//             });
+//         });
+//     } catch (error) {
+//         console.error('Error resizing image:', error);
+//         return res.status(500).json({ message: 'Error resizing image', error });
+//     }
+// });
+//ลอง เงื่อนไข ยังมีปัญหากรณีทั้งแอด ลบ อัปเดต ใน req เดียว
+// ได้แยะ
+router.patch('/editProductWithRecipe/:pd_id', upload.single('picture'), async (req, res) => {
+    const pd_id = req.params.pd_id;
+
+    const { pd_name, pd_qtyminimum, status, pdc_id, recipe, recipedetail } = req.body;
+    const imageBuffer = req.file && req.file.buffer ? req.file.buffer : null;
+
+    try {
+        let imageBase64 = null;
+
+        // ตรวจสอบว่ามีการอัปโหลดรูปภาพหรือไม่
+        if (imageBuffer) {
+            // ปรับขนาดรูปภาพ
+            const resizedImageBuffer = await sharp(imageBuffer)
+                .resize({ width: 300, height: 300 })
+                .toBuffer();
+
+            // แปลงข้อมูลรูปภาพเป็น base64
+            imageBase64 = resizedImageBuffer.toString('base64');
+        }
+
+        const productUpdateData = { pd_name, pd_qtyminimum, status, pdc_id };
+        console.log(productUpdateData)
+        if (imageBase64) {
+            productUpdateData.picture = imageBase64;
+        }
+
+        connection.beginTransaction((err) => {
+            if (err) {
+                return res.status(500).json({ message: 'Transaction start error', error: err });
+            }
+
+            connection.query('UPDATE products SET ?,updated_at = CURRENT_TIMESTAMP  WHERE pd_id = ?', [productUpdateData, pd_id], (err, productResult) => {
+                if (err) {
+                    console.error('Error updating product:', err);
+                    connection.rollback(() => {
+                        res.status(500).json({ message: 'Error updating product', error: err });
+                    });
+                    return;
+                }
+
+                if (!productResult || productResult.affectedRows === 0) {
+                    console.error('Product update result is invalid:', productResult);
+                    connection.rollback(() => {
+                        res.status(500).json({ message: 'Invalid product update result' });
+                    });
+                    return;
+                }
+                //มีปัญหา
+                console.log(recipe, recipedetail)
+                if (recipe && recipedetail) {
+
+                    // const recipeUpdateData = { };
+
+                    connection.query('UPDATE recipe SET ? WHERE pd_id = ?', [recipe, pd_id], (err, recipeResult) => {
+                        if (err) {
+                            console.error('Error updating product:', err);
+                            connection.rollback(() => {
+                                res.status(500).json({ message: 'Error updating recipe', error: err });
+                            });
+                            return;
+                        }
+
+
+                        // Check if there are recipedetails to process
+                        if (recipedetail && recipedetail.length > 0) {
+
+                            const indIdsInReq = recipedetail.map(detail => detail.ind_id).filter(id => id !== undefined);
+                            console.log("req", indIdsInReq)
+                            // Fetch existing ind_ids from the database for the current recipe
+                            const existingIndIdsQuery = `SELECT rd.ind_id, rd.rc_id
+                        FROM recipedetail rd 
+                        JOIN recipe r ON rd.rc_id = r.rc_id 
+                        JOIN products p ON p.pd_id = r.pd_id 
+                        where p.pd_id = ?`;
+                            connection.query(existingIndIdsQuery, pd_id, (err, existingIndIds) => {
+                                if (err) {
+                                    connection.rollback(() => {
+                                        return res.status(500).json({ message: 'Error fetching existing ind_ids', error: err });
+                                    });
+                                }
+
+
+                                // const rcIdsArray = existingIndIds.map(row => row.rc_id);
+                                // console.log("rcIdsArray", rcIdsArray);
+                                const rcId = existingIndIds.reduce((acc, current) => current.rc_id, null);
+                                console.log("rcId", rcId);
+
+                                const existingIndIdsArray = existingIndIds.map(row => row.ind_id);
+                                console.log("DB", existingIndIdsArray)
+                                const indIdsToUpdate = existingIndIdsArray.filter(id => indIdsInReq.includes(id));
+                                const indIdsToAdd = indIdsInReq.filter(id => !existingIndIdsArray.includes(id));
+                                const indIdsToDelete = existingIndIdsArray.filter(id => !indIdsInReq.includes(id));
+                                console.log("up", indIdsToUpdate, "add", indIdsToAdd, "de", indIdsToDelete)
+
+                                const updateData = [];
+                                const insertData = [];
+                                // const deleteData = [];
+
+                                recipedetail.forEach(detail => {
+                                    const { ind_id, ingredients_qty, un_id } = detail;
+                            
+                                    // Check if ind_id is defined and not null
+                                    if (ind_id !== undefined && ind_id !== null) {
+                                        if (indIdsToUpdate.includes(ind_id)){
+                                            updateData.push(detail);
+                                            console.log("updateData",updateData)
+                                        }
+                                        if (indIdsToAdd.includes(ind_id)){
+                                            insertData.push(detail);
+                                            console.log("insertData",insertData)
+                                        }
+                                        // if (indIdsToDelete.includes(ind_id)){
+                                        //     deleteData.push(detail);
+                                        //     console.log("deleteData",deleteData)
+                                        // }
+                                    }
+                                });
+                            
+
+
+                                // Update recipedetail records
+                                if (updateData.length > 0) {
+                                    // const updateQuery = `UPDATE recipedetail SET ?, deleted_at = NULL WHERE rc_id = ? AND ind_id IN (?)`;
+                                    // // Construct your update query and execute it
+                                    // connection.query(updateQuery, [recipedetail,rcIdsArray ,indIdsToUpdate], (err, updateResult) => {
+                                    //     if (err) {
+                                    //         connection.rollback(() => {
+                                    //             return res.status(500).json({ message: 'Error updating recipedetail', error: err });
+                                    //         });
+                                    //     }
+                                    // });
+                                    // Update recipedetail records for each detail
+
+                                    updateData.forEach(detail => {
+                                        console.log("updateDatade",detail)
+                                    const { ind_id, ingredients_qty, un_id } = detail;
+                                    const updateQuery = `UPDATE recipedetail SET ingredients_qty = ?, un_id = ?, deleted_at = NULL WHERE rc_id = ? AND ind_id = ?`;
+                                    // Execute the update query for each detail
+                                    connection.query(updateQuery, [ingredients_qty, un_id, rcId, ind_id], (err, updateResult) => {
+                                        if (err) {
+                                            connection.rollback(() => {
+                                                return res.status(500).json({ message: 'Error updating recipedetail', error: err });
+                                            });
+                                        }
+                                    });
+                                    });
+
+                                }
+
+
+                                // // Insert new recipedetail records
+                                // if (insertData.length > 0) {
+                                //     insertData.forEach(detail => {
+                                //         const insertQuery = `INSERT INTO recipedetail (rc_id, ind_id, ingredients_qty, un_id) VALUES ?`;
+                                //         const valuesToAdd = detail.map(id => [rcId, id, ingredients_qty, un_id]); // แก้ไขตรงนี้
+                                //         // Insert new records into recipedetail table
+                                //         connection.query(insertQuery, [valuesToAdd], (err, insertResult) => {
+                                //             if (err) {
+                                //                 connection.rollback(() => {
+                                //                     return res.status(500).json({ message: 'Error inserting new recipedetail records', error: err });
+                                //                 });
+                                //             }
+                                //         });
+                                //     });
+                                // }
+                                if (insertData.length > 0) {
+            
+                                    const insertQuery = "INSERT INTO recipedetail (rc_id, ind_id, ingredients_qty, un_id,deleted_at) VALUES (?,?,?,?,?)";
+                        
+                                    const flattenedineData = insertData.flat();
+                        
+                                    flattenedineData.forEach(detail => {
+                                        const insertValues = [
+                                            rcId,
+                                            detail.ind_id,
+                                            detail.ingredients_qty,
+                                            detail.un_id,
+                                            null // กำหนดให้ deleted_at เป็น null
+                                        ];
+                        
+                                        connection.query(insertQuery, insertValues, (err, results) => {
+                                            if (err) {
+                                                connection.rollback(() => {
+                                                    return res.status(500).json({ message: 'Error soft insertQuery recipedetail records', error: err });
+                                                });
+                                            }
+                                        });
+                                    });
+                                }
+                        
+                        
+                                
+
+                                // // Soft delete recipedetail records
+                                if (indIdsToDelete.length > 0) {
+                                    indIdsToDelete.forEach(detail => {
+                                    const softDeleteQuery = `UPDATE recipedetail SET deleted_at = CURRENT_TIMESTAMP WHERE rc_id = ? AND ind_id IN (?)`;
+                                    // Soft delete existing records in recipedetail table
+                                    connection.query(softDeleteQuery, [rcId, detail], (err, deleteResult) => {
+                                        if (err) {
+                                            connection.rollback(() => {
+                                                return res.status(500).json({ message: 'Error soft deleting recipedetail records', error: err });
+                                            });
+                                        }
+                                    });
+                                });
+                                }
+                            });
+
+                        }
+
+                    });
+                }
+
+                // ยืนยันธุรกรรม
+                connection.commit((err) => {
+                    if (err) {
+                        connection.rollback(() => {
+                            return res.status(500).json({ message: 'Transaction commit error', error: err });
+                        });
+                    }
+
+                    return res.json({
+                        productId: pd_id,
+                        message: 'Product updated successfully!',
+                    });
+                });
+            });
+        });
+    } catch (error) {
+        console.error('Error resizing image:', error);
+        return res.status(500).json({ message: 'Error resizing image', error });
     }
 });
 
