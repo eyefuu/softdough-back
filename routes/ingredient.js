@@ -97,10 +97,9 @@ WHERE ingredient.ind_id = ?;  -- Fixed the alias here
     });
 });
 
-//เปลี่ยน ให้มีtype of unit
-
+// ให้มีtype of unit
 router.get('/unit', (req, res, next) => {
-    var query = 'select *from unit'
+    var query = 'select *from unit where type="1"'
     connection.query(query, (err, results) => {
         if (!err) {
             return res.status(200).json(results);
@@ -109,6 +108,20 @@ router.get('/unit', (req, res, next) => {
         }
     });
 })
+
+//เผื่อadd unit เพิ่มเติม
+router.post('/unit', (req, res, next) => {
+    let unit = req.body;
+    query = "insert into unit (un_name,type) values(?,'1')";
+    connection.query(query, [unit.un_name,unit.type], (err, results) => {
+        if (!err) {
+            return res.status(200).json({ message: "success" });
+        } else {
+            console.error("MySQL Error:", err);
+            return res.status(500).json({ message: "error", error: err });
+        }
+    });
+}) 
 
 router.patch('/update/:id', (req, res, next) => {
     const ingredientId = req.params.id;
@@ -1090,6 +1103,7 @@ router.get('/readlot/:id', (req, res, next) => {
 
 //     });
 // });
+
 //ลองแก้อันบนเป็น soft delete
 //ได้ละเหลือแก้ตรงแสดงให้ไม่เลือกอันที่มี delete_at
 router.patch('/editData/:indl_id', (req, res, next) => {
@@ -1251,14 +1265,14 @@ router.patch('/editData/:indl_id', (req, res, next) => {
         }
 
         // ตรวจสอบว่ามีข้อมูลที่ต้องการอัปเดตหรือไม่
-
+        // console.log("updateData",updateData)
         if (updateData.length > 0) {
             console.log("database uppp", updateData)
             // const updateQuery = "UPDATE Ingredient_lot_detail SET qtypurchased = ?, date_exp = ?, price = ? WHERE ind_id = ? AND indl_id = ?";
             const updateQuery = "UPDATE ingredient_lot_detail SET qtypurchased = ?, date_exp = ?, price = ?, deleted_at = NULL WHERE ind_id = ? AND indl_id = ?";
             //การใช้ flat() จะช่วยให้คุณได้ array ที่ flatten แล้วที่มี object ภายใน ซึ่งจะทำให้ง่ายต่อการทำงานกับข้อมูลในลำดับถัดไป.
             const flattenedUpdateData = updateData.flat();
-
+            console.log("flattenedUpdateData",flattenedUpdateData)
             flattenedUpdateData.forEach(detail => {
                 const updateValues = [
                     detail.qtypurchased,
@@ -1288,407 +1302,11 @@ router.patch('/editData/:indl_id', (req, res, next) => {
 
 
 
-// const query = `SELECT ingredient_lot_detail.ind_id FROM ingredient_lot_detail WHERE indl_id = ?`;
-// console.log(dataToEdit)
-// const indIdsQ = dataToEdit.map(detail => detail.ind_id).filter(id => id !== undefined);
-// console.log(indIdsQ);
-// let indIds;
-// connection.query(query, [indl_id], (err, results) => {
-//     if (err) {
-//         console.error("MySQL Query Error:", err);
-//         // handle error
-//     }
-
-//     // ถ้าไม่มี error, results จะเป็น array ของ object ที่มี key เป็น 'ind_id'
-//     indIds = results.map(result => result.ind_id);
-//     console.log("indIds:", indIds);
-// })
-
-// indIds.forEach(detail => {
-//     //ยังอยู่ตรงนี้
-//     if (detail) {
-//         // ตรวจสอบว่า ind_id มีอยู่ในฐานข้อมูลหรือไม่
-//         // const query = `SELECT ingredient_lot_detail.ind_id FROM ingredient_lot_detail WHERE indl_id = ?`;
-//         // connection.query(query, [detail.ind_id], (err, results) => {
-//         //     if (err) {
-//         //         console.error("MySQL Query Error:", err);
-//         //         return res.status(500).json({ message: "error", error: err });
-//         //     }
-
-//         //     // const rowCount = results[0].count;
-//         //     console.log(query)
-//         //     if (detail.ind_id===query) {
-//         //         // ind_id มีอยู่ในฐานข้อมูล ให้ทำการอัปเดต
-//         //         console.log(dataToEdit)
-//         //         updateData.push(detail);
-//         //     } else {
-//         //         // ind_id ไม่มีอยู่ในฐานข้อมูล ให้ทำการเพิ่ม
-//         //         insertData.push(detail);
-//         //     }
-//         // });
-
-//         // connection.query(query, [indl_id], (err, results) => {
-//         //     if (err) {
-//         //         console.error("MySQL Query Error:", err);
-//         //         // handle error
-//         //     }
-
-//         //     // ถ้าไม่มี error, results จะเป็น array ของ object ที่มี key เป็น 'ind_id'
-//         //     const indIds = results.map(result => result.ind_id);
-//         //     console.log("indIds:", indIds);
-//         //     console.log("detail.ind_id:", detail.ind_id);
-//         //     if (indIds.includes(detail.ind_id)) {
-//         //         // ind_id มีอยู่ในฐานข้อมูล ให้ทำการอัปเดต
-//         //         console.log("Update data:", detail);
-//         //         updateData.push(detail);
-//         //     } else {
-//         //         if (detail.ind_id) {
-//         //             // ind_id ไม่มีอยู่ในฐานข้อมูล ให้ทำการเพิ่ม
-//         //             console.log("Insert data:", detail);
-//         //             insertData.push(detail);
-//         //         } else {
-//         //             // ind_id ไม่ได้ระบุ ให้ทำการลบ
-//         //             console.log("Delete data:", detail);
-//         //             deleteData.push(detail);
-//         //         }
-//         //     }
-
-
-//         // });
-//         if (indIdsQ.includes(indIds)) {
-//             // ind_id มีอยู่ในฐานข้อมูล ให้ทำการอัปเดต
-//             console.log("Update data:", dataToEdit.ind_id(indIdsQ));
-//             updateData.push(detail);
-//         } else {
-//             if (indIds) {
-//                 // ind_id ไม่มีอยู่ในฐานข้อมูล ให้ทำการเพิ่ม
-//                 console.log("Insert data:",dataToEdit.ind_id(indIdsQ));
-//                 insertData.push(detail);
-//             } else {
-//                 // ind_id ไม่ได้ระบุ ให้ทำการลบ
-//                 console.log("Delete data:", dataToEdit.ind_id(indIdsQ));
-//                 deleteData.push(dataToEdit.ind_id(indIdsQ));
-//             }
-//         }
-//     } else {
-//         // ind_id ไม่ได้ระบุ ให้ทำการเพิ่ม
-//         insertData.push(detail);
-//     }
-// });
-
-//ไม่ได้
-// dataToEdit.forEach(detail => {
-//     console.log("detail.ind_id", detail.ind_id)
-//     if (detail.ind_id && detail.ind_id.ind_id !== undefined && detail.ind_id.ind_id !== null) {
-//         // ตรวจสอบว่า detail.ind_id เป็น Object ที่มี key "ind_id" และมีค่าไม่ใช่ undefined หรือ null
-//         const query = `SELECT ingredient_lot_detail.ind_id FROM ingredient_lot_detail WHERE indl_id = ?`;
-//         connection.query(query, [indl_id], (err, results) => {
-//             if (err) {
-//                 console.error("MySQL Query Error:", err);
-//                 // handle error
-//             }
-
-//             const indIds = results.map(result => result.ind_id);
-//             console.log("indIds:", indIds);
-//             console.log("detail.ind_id:", detail.ind_id.ind_id);
-
-//             // ตรวจสอบว่า indIds มีค่าใดใน detail.ind_id หรือไม่
-//             const existingIndIds = [detail.ind_id.ind_id].filter(id => indIds.includes(id));
-
-//             if (existingIndIds.length > 0) {
-//                 // ถ้ามี ind_id ใน indIds ที่มีใน detail.ind_id จะไปที่ update
-//                 console.log("Update data:", detail);
-//                 updateData.push(detail);
-//             }
-
-//             // ตรวจสอบว่า indIds มีค่าใดที่ไม่มีใน detail.ind_id หรือไม่
-//             const deIndIds = indIds.filter(id => id !== detail.ind_id.ind_id);
-
-//             if (deIndIds.length > 0) {
-//                 // ถ้ามี ind_id ใน indIds ที่ไม่มีใน detail.ind_id จะไปที่ delete
-//                 console.log("Insert data:", deIndIds);
-//                 deleteData.push(deIndIds);
-//             }
-
-//             // ตรวจสอบว่า detail.ind_id มีค่าใดที่ไม่มีใน indIds หรือไม่
-//             const inIndIds = [detail.ind_id.ind_id].filter(id => !indIds.includes(id));
-
-//             if (inIndIds.length > 0) {
-//                 // ถ้ามี ind_id ใน detail.ind_id ที่ไม่มีใน indIds จะไปที่ insert
-//                 console.log("Delete data:", inIndIds);
-//                 insertData.push(inIndIds);
-//             }
-//         });
-//     } else {
-//         // ind_id ไม่ได้ระบุ หรือไม่เป็น Object ที่มี key "ind_id" หรือค่าของ "ind_id" เป็น undefined หรือ null
-//         // ให้ทำการเพิ่ม
-//         // insertData.push(detail);
-//         console.log("not Insert data:", detail);
-//     }
-// });
 
 
 
 
 
-
-// ตรวจสอบว่ามีข้อมูลที่ต้องการลบหรือไม่
-//     console.log("de length",deleteData.length)
-//     if (deleteData.length > 0) {
-//         const deleteQuery = "DELETE FROM Ingredient_lot_detail WHERE ind_id = ? AND indl_id = ?";
-
-//         deleteData.forEach(detail => {
-//             const deleteValues = [detail, indl_id];
-//             console.log(deleteValues)
-
-//             connection.query(deleteQuery, deleteValues, (err, results) => {
-//                 if (err) {
-//                     console.error("MySQL Delete Query Error:", err);
-//                     return res.status(500).json({ message: "error", error: err });
-//                 }
-
-//                 console.log("Deleted data:", results);
-//             });
-//         });
-//     }
-
-//     // ตรวจสอบว่ามีข้อมูลที่ต้องการเพิ่มหรือไม่
-//     if (insertData.length > 0) {
-//         const insertQuery = "INSERT INTO Ingredient_lot_detail (ind_id, qtypurchased, date_exp, price, indl_id) VALUES ?";
-//         const insertValues = insertData.map(detail => [
-//             detail.ind_id,
-//             detail.qtypurchased,
-//             detail.date_exp,
-//             detail.price,
-//             indl_id
-//         ]);
-
-//         connection.query(insertQuery, [insertValues], (err, results) => {
-//             if (err) {
-//                 console.error("MySQL Insert Query Error:", err);
-//                 return res.status(500).json({ message: "error", error: err });
-//             }
-
-//             console.log("Inserted data:", results);
-//         });
-//     }
-
-//     // ตรวจสอบว่ามีข้อมูลที่ต้องการอัปเดตหรือไม่
-//     if (updateData.length > 0) {
-//         const updateQuery = "UPDATE Ingredient_lot_detail SET qtypurchased = ?, date_exp = ?, price = ? WHERE ind_id = ? AND indl_id = ?";
-
-//         updateData.forEach(detail => {
-//             const updateValues = [
-//                 detail.qtypurchased,
-//                 detail.date_exp,
-//                 detail.price,
-//                 // detail.ind_id,
-//                 // indl_id
-//             ];
-
-//             connection.query(updateQuery, updateValues, (err, results) => {
-//                 if (err) {
-//                     console.error("MySQL Update Query Error:", err);
-//                     return res.status(500).json({ message: "error", error: err });
-//                 }
-
-//                 console.log("Updated data:", results);
-//             });
-//         });
-//     }
-
-//     res.status(200).json({ message: "test เงื่อนไข" });
-// });
-
-
-
-
-// router.put('/updateLotIngrediant', (req, res, next) => {
-//     const ingredient_lot_detail = req.body;
-
-//     // รับค่า ID ที่ต้องการแก้ไข
-//     const indl_id = ingredient_lot_detail[0].indl_id; // Assuming that indl_id is common for all detail records
-
-//     // สำหรับ ingredient_lot_detail, หากคุณต้องการแก้ไขค่าใด ๆ ให้เพิ่มเงื่อนไขและค่าที่ต้องการให้เปลี่ยนแปลง
-//     const detailUpdateQuery = `
-//         UPDATE Ingredient_lot_detail 
-//         SET qtypurchased = ?, date_exp = ?, price = ?
-//         WHERE indl_id = ?
-//     `;
-
-//     const detailUpdateValues = ingredient_lot_detail.map(detail => [
-//         detail.qtypurchased,
-//         detail.date_exp,
-//         detail.price,
-//         indl_id
-//     ]);
-
-//     connection.query(detailUpdateQuery, detailUpdateValues, (err, results) => {
-//         if (err) {
-//             console.error("MySQL Error:", err);
-//             return res.status(500).json({ message: "error", error: err });
-//         } else {
-//             // สำหรับ ingredient_lot, หากคุณต้องการแก้ไขค่าใด ๆ ให้เพิ่มเงื่อนไขและค่าที่ต้องการให้เปลี่ยนแปลง
-//             const lotUpdateQuery = `
-//                 UPDATE ingredient_lot 
-//                 SET update_at = NOW()
-//                 WHERE indl_id = ?
-//             `;
-
-//             connection.query(lotUpdateQuery, [indl_id], (err, results) => {
-//                 if (err) {
-//                     console.error("MySQL Error:", err);
-//                     return res.status(500).json({ message: "error", error: err });
-//                 } else {
-//                     return res.status(200).json({ message: "success", indl_id });
-//                 }
-//             });
-//         }
-//     });
-// });
-
-// บาด
-// router.post('/api/v1/ingredient/lot/edit/:indl_id', async (req, res) => {
-//     try {
-//         // Retrieve parameters from the URL and request body
-//         const indl_id = req.params.indl_id;
-//         const dataToEdit = req.body.dataToEdit;
-
-//         // Validate input data
-//         if (!indl_id || !dataToEdit || !Array.isArray(dataToEdit)) {
-//             return res.status(400).json({ message: "error", error: "Invalid input data" });
-//         }
-
-//         // Loop through each item in dataToEdit
-//         for (const item of dataToEdit) {
-//             // Validate item structure
-//             if (!item.ind_id || !item.qtypurchased || !item.date_exp || !item.price) {
-//                 return res.status(400).json({ message: "error", error: "Invalid data structure" });
-//             }
-
-//             try {
-//                 // Check if the record exists
-//                 const existingRecord = await connection.query(
-//                     'SELECT * FROM ingredient_lot_detail WHERE indl_id = ? AND ind_id = ?',
-//                     [indl_id, item.ind_id]
-//                 );
-
-//                 if (existingRecord.length > 0) {
-//                     // Update the existing record
-//                     await connection.query(`
-//                         UPDATE ingredient_lot_detail
-//                         SET
-//                             qtypurchased = ?,
-//                             date_exp = ?,
-//                             price = ?
-//                         WHERE indl_id = ? AND ind_id = ?
-//                     `, [item.qtypurchased, item.date_exp, item.price, indl_id, item.ind_id]);
-//                 } else {
-//                     // Insert a new record
-//                     await connection.query(`
-//                         INSERT INTO ingredient_lot_detail (ind_id, indl_id, qtypurchased, date_exp, price)
-//                         VALUES (?, ?, ?, ?, ?)
-//                     `, [item.ind_id, indl_id, item.qtypurchased, item.date_exp, item.price]);
-//                 }
-//             } catch (error) {
-//                 console.error("Error in database operation:", error);
-//                 return res.status(500).json({ message: "error", error: "Internal Server Error" });
-//             }
-//         }
-
-//         // Send a success response
-//         res.status(200).json({ message: "success" });
-//     } catch (error) {
-//         console.error("Error in request processing:", error);
-//         res.status(500).json({ message: "error", error: "Internal Server Error" });
-//     }
-// });
-
-//test new
-//ไม่เอา
-// router.post('/updateLotIngredient/:indl_id', (req, res) => {
-//     console.log('Request Method:', req.method);
-//     console.log('Request Headers:', req.headers);
-//     console.log('Request Body:', req.body);
-
-//     const indl_id = req.params.indl_id;
-//     const ingredientLotDetails = req.body;
-
-//     // ตรวจสอบว่า ingredientLotDetails เป็น array หรือไม่
-//     if (!Array.isArray(ingredientLotDetails)) {
-//         console.log(req.body);
-//         return res.status(400).json({ message: 'error', error: 'ingredientLotDetails must be an array' });
-//     }
-
-//     // ทำการ Begin Transaction
-//     connection.beginTransaction(err => {
-//         if (err) {
-//             return res.status(500).json({ message: 'error', error: err });
-//         }
-
-//         // ตรวจสอบว่ามี indl_id ที่ต้องการแก้ไขหรือไม่
-//         const checkQuery = 'SELECT COUNT(*) AS rowCount FROM ingredient_lot_detail WHERE indl_id = ?';
-//         connection.query(checkQuery, [indl_id], (err, results) => {
-//             if (err) {
-//                 return connection.rollback(() => {
-//                     res.status(500).json({ message: 'error', error: err });
-//                 });
-//             }
-
-//             const rowCount = results[0].rowCount;
-
-//             // ลบข้อมูลเกินมาออก ถ้ามีมากกว่าจำนวนที่ต้องการแก้ไข
-//             if (rowCount > ingredientLotDetails.length) {
-//                 const deleteQuery = 'DELETE FROM ingredient_lot_detail WHERE indl_id = ? LIMIT ?';
-//                 connection.query(deleteQuery, [indl_id, rowCount - ingredientLotDetails.length], err => {
-//                     if (err) {
-//                         return connection.rollback(() => {
-//                             res.status(500).json({ message: 'error', error: err });
-//                         });
-//                     }
-//                 });
-//             }
-
-//             // ทำการแก้ไขหรือเพิ่มข้อมูล
-//             const values = ingredientLotDetails.map(detail => [
-//                 detail.ind_id,
-//                 indl_id,
-//                 detail.qtypurchased,
-//                 detail.date_exp,
-//                 detail.price,
-//             ]);
-
-//             const updateQuery = `
-//           INSERT INTO ingredient_lot_detail (ind_id, indl_id, qtypurchased, date_exp, price)
-//           VALUES (?, ?, ?, ?, ?)
-//           ON DUPLICATE KEY UPDATE
-//           ind_id = VALUES(ind_id),
-//           qtypurchased = VALUES(qtypurchased),
-//           date_exp = VALUES(date_exp),
-//           price = VALUES(price)
-//         `;
-
-//             connection.query(updateQuery, values, (err, results) => {
-//                 if (err) {
-//                     return connection.rollback(() => {
-//                         res.status(500).json({ message: 'error', error: err });
-//                     });
-//                 }
-
-//                 // Commit Transaction และส่งผลลัพธ์
-//                 connection.commit(err => {
-//                     if (err) {
-//                         return connection.rollback(() => {
-//                             res.status(500).json({ message: 'error', error: err });
-//                         });
-//                     }
-
-//                     res.status(200).json({ message: 'success', indl_id });
-//                 });
-//             });
-//         });
-//     });
-// });
 
 
 
