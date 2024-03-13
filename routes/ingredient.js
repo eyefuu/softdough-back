@@ -392,6 +392,7 @@ router.get('/ingredientLotDetails/:indl_id', (req, res, next) => {
 //     });
 // });
 
+//ไม่ใช้
 router.delete('/ingredientLotDetails/:indlde_id', (req, res, next) => {
     const indlde_id = req.params.indlde_id;
 
@@ -424,7 +425,7 @@ router.get('/readlot', (req, res, next) => {
         indl_id,
         CONCAT('L', LPAD(indl_id, 7, '0')) AS indl_id_name,
         DATE_FORMAT(created_at, '%Y-%m-%d') AS created_at,
-        DATE_FORMAT(update_at, '%Y-%m-%d') AS update_at
+        DATE_FORMAT(updated_at, '%Y-%m-%d') AS updated_at
     FROM Ingredient_lot 
     ORDER BY created_at DESC
 `;
@@ -1106,6 +1107,7 @@ router.get('/readlot/:id', (req, res, next) => {
 
 //ลองแก้อันบนเป็น soft delete
 //ได้ละเหลือแก้ตรงแสดงให้ไม่เลือกอันที่มี delete_at
+
 router.patch('/editData/:indl_id', (req, res, next) => {
     const indl_id = req.params.indl_id;
     // const dataToEdit = req.body.dataToEdit;

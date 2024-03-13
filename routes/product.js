@@ -32,6 +32,7 @@ router.get('/readcat', (req, res, next) => {
     });
 })
 
+
 router.patch('/updatecat/:pdc_id', (req, res, next) => {
     const pdc_id = req.params.pdc_id;
     const sm = req.body;
