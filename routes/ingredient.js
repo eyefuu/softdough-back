@@ -1107,7 +1107,6 @@ router.get('/readlot/:id', (req, res, next) => {
 
 //ลองแก้อันบนเป็น soft delete
 //ได้ละเหลือแก้ตรงแสดงให้ไม่เลือกอันที่มี delete_at
-
 router.patch('/editData/:indl_id', (req, res, next) => {
     const indl_id = req.params.indl_id;
     // const dataToEdit = req.body.dataToEdit;
@@ -1242,6 +1241,9 @@ router.patch('/editData/:indl_id', (req, res, next) => {
             const insertQuery = "INSERT INTO ingredient_lot_detail (ind_id, qtypurchased, date_exp, price, indl_id, deleted_at) VALUES (?,?,?,?,?,?)";
 
             const flattenedineData = insertData.flat();
+            console.log("insertData",insertData)
+            console.log("flattenedineData",flattenedineData)
+
 
             flattenedineData.forEach(detail => {
                 const insertValues = [

@@ -193,7 +193,7 @@ router.get('/readone/:pdo_id', (req, res, next) => {
                         // created_at: item.created_at,
                         // deleted_at: item.deleted_at,
                         pdc_name: item.pdc_name,
-                        pd_name:item.pd_name
+                        pd_name: item.pd_name
                     }))
                 };
 
@@ -208,6 +208,195 @@ router.get('/readone/:pdo_id', (req, res, next) => {
     }
 });
 
+//edit
+router.patch('/editData/:pdo_id', (req, res, next) => {
+    const pdo_id = req.params.pdo_id;
+    // const dataToEdit = req.body.dataToEdit;
+    const dataToEdit = req.body.dataToEdit;
+
+    if (!dataToEdit || dataToEdit.length === 0) {
+        return res.status(400).json({ message: "error", error: "No data to edit provided" });
+    }
+    const query1 = `SELECT pdo_status FROM productionOrder WHERE pdo_id = ?`;
+
+    connection.query(query1, [pdo_id], (err, results) => {
+        if (err) {
+            console.error("MySQL Query Error:", err);
+            // handle error
+        }
+        const pdo_status = results[0].pdo_status;
+
+        console.log(pdo_status);
+
+        if (pdo_status === '1') {
+            // แยกข้อมูลที่ต้องการอัปเดต แยกเป็นข้อมูลที่ต้องการเพิ่ม และข้อมูลที่ต้องการลบ
+            const updateData = [];
+            const insertData = [];
+            const deleteData = [];
+            const query = `SELECT productionOrderdetail.pd_id FROM productionOrderdetail WHERE pdo_id = ?`;
+            console.log(dataToEdit)
+
+            let pdIdsQ = dataToEdit.map(detail => detail.pd_id).filter(id => id !== undefined);
+            console.log(pdIdsQ);
+            let pdIds;
+
+            connection.query(query, [pdo_id], (err, results) => {
+                if (err) {
+                    console.error("MySQL Query Error:", err);
+                    // handle error
+                }
+
+                // ถ้าไม่มี error, results จะเป็น array ของ object ที่มี key เป็น 'ind_id'
+                pdIds = results.map(result => result.pd_id);
+                // console.log("indIds:", indIds);
+
+                pdIds.forEach(detail => {
+                    //ยังอยู่ตรงนี้
+                    // console.log(detail)
+                    const selectedData = dataToEdit.filter(item => item.pd_id === detail);
+                    // const indIdsNotInIndIdsQdata = dataToEdit.filter(item => item.ind_id === indIdsNotInIndIdsQ);
+                    // console.log("for insert indIdsNotInIndIdsQdata",indIdsNotInIndIdsQdata)
+
+                    console.log("for up selectedData", selectedData)
+
+                    // console.log("for insert indIdsNotInIndIdsQ", indIdsNotInIndIdsQ)
+
+                    if (detail) {
+                        // ตรวจสอบว่า ind_id มีอยู่ในฐานข้อมูลหรือไม่
+                        // const query = `SELECT ingredient_lot_detail.ind_id FROM ingredient_lot_detail WHERE indl_id = ?`;
+
+                        if (pdIdsQ.includes(detail)) {
+                            // ind_id มีอยู่ในฐานข้อมูล ให้ทำการอัปเดต
+                            console.log("Update data:", selectedData);
+                            updateData.push(selectedData);
+                        } else {
+                            if (pdIds) {
+                                // ind_id ไม่มีอยู่ในฐานข้อมูล ให้ทำการลบ
+                                console.log("delete data:", detail);
+                                deleteData.push(detail);
+                            } else {
+                                // ind_id ไม่ได้ระบุ ให้ทำการเพิ่ม
+                                //ไม่ทำงาน
+                                //ค่อยคิด
+                                console.log("nonono insert data:", selectedData);
+                                insertData.push(selectedData);
+                            }
+                        }
+
+                    } else {
+                        // ind_id ไม่ได้ระบุ ให้ทำการเพิ่ม
+                        //ค่อยคิด
+                        console.log(detail)
+                        insertData.push(detail);
+                    }
+                });
+
+                const pdIdsNotInpdIdsQ = pdIdsQ.filter(id => !pdIds.includes(id));
+                console.log(pdIdsNotInpdIdsQ)
+
+                if (pdIdsNotInpdIdsQ != []) {
+                    pdIdsNotInpdIdsQ.forEach(detail => {
+                        console.log(detail)
+                        const pdIdsNotInpdIdsQdata = dataToEdit.filter(item => item.pd_id === detail);
+                        console.log("Insert data:", pdIdsNotInpdIdsQ);
+                        insertData.push(pdIdsNotInpdIdsQdata);
+                    });
+
+                }
+                console.log(deleteData, insertData, updateData)
+                // indIdsQ.forEach(detail => {
+
+                //     console.log(detail)
+                //     const selectedData = dataToEdit.filter(item => item.ind_id === detail);
+
+                // });
+                console.log("de length", deleteData.length)
+                console.log("in length", insertData.length)
+                console.log("ed length", updateData.length)
+                if (deleteData.length > 0) {
+                    // const deleteQuery = "DELETE FROM Ingredient_lot_detail WHERE ind_id = ? AND indl_id = ?";
+                    const deleteQuery = "UPDATE productionOrderdetail SET deleted_at = CURRENT_TIMESTAMP WHERE pd_id = ? AND pdo_id = ?";
+                    deleteData.forEach(detail => {
+                        const deleteValues = [detail, pdo_id];
+                        console.log(deleteValues)
+
+                        connection.query(deleteQuery, deleteValues, (err, results) => {
+                            if (err) {
+                                console.error("MySQL Delete Query Error:", err);
+                                return res.status(500).json({ message: "error", error: err });
+                            }
+
+                            console.log("Deleted data:", results);
+                        });
+                    });
+                }
+
+                // ตรวจสอบว่ามีข้อมูลที่ต้องการเพิ่มหรือไม่
+                if (insertData.length > 0) {
+                    console.log("database inn", insertData)
+                    console.log("pdo id", pdo_id)
+                    const insertQuery = "INSERT INTO productionOrderdetail (pd_id,qty, status, pdo_id , deleted_at) VALUES (?,?,?,?,?)";
+
+                    const flattenedineData = insertData.flat();
+                    console.log("flattenedineData",flattenedineData)
+
+                    flattenedineData.forEach(detail => {
+                        const insertValues = [
+                            detail.pd_id,
+                            detail.qty,
+                            1,
+                            pdo_id,
+                            null // กำหนดให้ deleted_at เป็น null
+                        ];
+
+                        connection.query(insertQuery, insertValues, (err, results) => {
+                            if (err) {
+                                console.error("MySQL Insert Query Error:", err);
+                                return res.status(500).json({ message: "error", error: err });
+                            }
+
+                            console.log("Inserted data:", results);
+                        });
+                    });
+
+
+                }
+
+                // ตรวจสอบว่ามีข้อมูลที่ต้องการอัปเดตหรือไม่
+                // console.log("updateData",updateData)
+                if (updateData.length > 0) {
+                    console.log("database uppp", updateData)
+                    // const updateQuery = "UPDATE Ingredient_lot_detail SET qtypurchased = ?, date_exp = ?, price = ? WHERE ind_id = ? AND indl_id = ?";
+                    const updateQuery = "UPDATE productionOrderdetail SET qty = ?, status = 1, deleted_at = NULL WHERE pd_id = ? AND pdo_id = ?";
+                    //การใช้ flat() จะช่วยให้คุณได้ array ที่ flatten แล้วที่มี object ภายใน ซึ่งจะทำให้ง่ายต่อการทำงานกับข้อมูลในลำดับถัดไป.
+                    const flattenedUpdateData = updateData.flat();
+                    console.log("flattenedUpdateData", flattenedUpdateData)
+                    flattenedUpdateData.forEach(detail => {
+                        const updateValues = [
+                            detail.qty,
+                            detail.pd_id,
+                            pdo_id
+                        ];
+
+                        connection.query(updateQuery, updateValues, (err, results) => {
+                            if (err) {
+                                console.error("MySQL Update Query Error:", err);
+                                return res.status(500).json({ message: "error", error: err });
+                            }
+
+                            console.log("Updated data:", results);
+                        });
+                    });
+
+                }
+
+                res.status(200).json({ message: "test เงื่อนไข" });
+            });
+        } else {
+            return res.status(500).json({ message: "status != 1"});
+        }
+    });
+});
 
 
 
