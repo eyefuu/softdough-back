@@ -45,8 +45,8 @@ router.get('/readsmt', (req, res, next) => {
 router.patch('/updatesmt/:smt_id', (req, res, next) => {
     const smt_id = req.params.smt_id;
     const sm = req.body;
-    var query = "UPDATE salesmenuType SET pdc_name=? WHERE smt_id=?";
-    connection.query(query, [cat.pdc_name, pdc_id], (err, results) => {
+    var query = "UPDATE salesmenuType SET smt_name=? WHERE smt_id=?";
+    connection.query(query, [sm.smt_name, smt_id], (err, results) => {
         if (!err) {
             if (results.affectedRows === 0) {
                 console.error(err);
@@ -289,17 +289,17 @@ router.post('/addsm', upload.single('picture'), async (req, res) => {
                     });
                     return res.status(500).json({ message: 'An error occurred' });
                 }
-
                 const salesmenuId = salesmenuResult.insertId;
                 //สำรองถ้า tsx ส่งมาละไม่ได้ ติด สตริงสัมติง
-                // const salesmenudetailar = JSON.parse(salesmenudetail);  
+                //ก่อนติดสตริงจะไม่มี
+                const salesmenudetailar = JSON.parse(salesmenudetail);  
                 console.log(salesmenudetail)
                 console.log(fix)
-                // console.log(salesmenudetailar)
+                console.log(salesmenudetailar)
 
-                if (salesmenudetail && Array.isArray(salesmenudetail)) {
+                if (salesmenudetailar && Array.isArray(salesmenudetailar)) {
                     if (fix === "1") {
-                        const salesmenudetail1 = salesmenudetail.map(detail => [salesmenuId, detail.pd_id, detail.qty, null]);
+                        const salesmenudetail1 = salesmenudetailar.map(detail => [salesmenuId, detail.pd_id, detail.qty, null]);
                         const salesmenudetailQuery = `INSERT INTO salesMenudetail (sm_id, pd_id, qty,deleted_at) VALUES ?`;
                         connection.query(salesmenudetailQuery, [salesmenudetail1], (err, detailResults) => {
                             if (err) {
@@ -317,7 +317,7 @@ router.post('/addsm', upload.single('picture'), async (req, res) => {
 
                         });
                     } else if (fix === "2") {
-                        const salesmenudetailWithNullQty = salesmenudetail.map(detail => [salesmenuId, detail.pd_id, null, null]); // กำหนดค่า qty เป็น null ในแต่ละรายการ
+                        const salesmenudetailWithNullQty = salesmenudetailar.map(detail => [salesmenuId, detail.pd_id, null, null]); // กำหนดค่า qty เป็น null ในแต่ละรายการ
                         const salesmenudetailQuery = `INSERT INTO salesMenudetail (sm_id, pd_id, qty,deleted_at) VALUES ?`;
                         connection.query(salesmenudetailQuery, [salesmenudetailWithNullQty], (err, detailResults) => {
                             if (err) {

@@ -6,7 +6,7 @@ const db = mysql.createConnection(
         port:'3306',
         user:'root',
         password:'',
-        database:'softdough2'
+        database:'softdoughfinal'
         // database:'softdough'
     }
 );
