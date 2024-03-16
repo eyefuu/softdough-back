@@ -889,6 +889,102 @@ router.get('/products/:pd_id', async (req, res) => {
     }
 });
 
+router.get('/pdset/:pd_id', async (req, res, next) => {
+    const pd_id = Number(req.params.pd_id);
+    try {
+        var query = `SELECT pd.* , rc.* ,rcd.*,ind.ind_name as ind_name, pdc.pdc_name as pdc_name
+        FROM productCategory pdc
+        JOIN products pd ON pdc.pdc_id = pd.pdc_id
+        JOIN recipe rc ON rc.pd_id = pd.pd_id
+        JOIN recipedetail rcd ON rcd.rc_id = rc.rc_id
+        JOIN ingredient ind ON ind.ind_id = rcd.ind_id
+        WHERE pd.pd_id = ?`;
+
+        connection.query(query, pd_id, (err, results) => {
+            if (!err) {
+                // res.json(results);
+
+                // // กรองแถวของ smd ที่ deleted_at เท่ากับ null
+                const filteredResults = results.filter(item => item.deleted_at === null);
+
+                if (filteredResults.length === 0) {
+                    return res.status(404).json({ message: 'sm not found' });
+                }
+
+                // ดำเนินการสร้างโครงสร้าง JSON ที่ถูกต้อง
+                const formattedResult = {
+                    pd_id: filteredResults[0].pd_id,
+                    pd_name: filteredResults[0].pd_name,
+                    pd_qtyminimum: filteredResults[0].pd_qtyminimum,
+                    pdc_name: filteredResults[0].pdc_name,
+                    status: filteredResults[0].status,
+                    // fix: filteredResults[0].fix,
+                    picture: filteredResults[0].picture,
+                    created_at: filteredResults[0].created_at,
+                    updated_at: filteredResults[0].updated_at,
+                    rc_id: filteredResults[0].rc_id,
+                    qtylifetime: filteredResults[0].qtylifetime,
+                    produced_qty: filteredResults[0].produced_qty,
+
+                    recipedetail: filteredResults.map(item => ({
+                        ingredients_qty: item.ingredients_qty,
+                        ind_id: item.ind_id ,
+                        un_id: item.un_id,
+                        ind_name: item.ind_name
+                    }))
+                };
+
+                // If the product contains picture data
+                if (formattedResult.picture) {
+                    // Include the base64-encoded picture data in the response
+                    formattedResult.picture = `data:image/jpeg;base64,${formattedResult.picture}`;
+                }
+
+                return res.status(200).json(formattedResult);
+            } else {
+                console.error('Error retrieving sm:', err);
+                return res.status(500).json({ message: 'Error retrieving sm', error: err });
+            }
+        });
+    } catch (error) {
+        console.error('Error retrieving sm:', error);
+        return res.status(500).json({ message: 'Error retrieving sm', error });
+    }
+});
+
+router.get('/productsall', async (req, res, next) => {
+    try {
+        var query = `SELECT pd.* , rc.* 
+            FROM products pd 
+            JOIN recipe rc ON rc.pd_id = pd.pd_id`;
+
+        connection.query(query, (err, results) => {
+            if (err) {
+                console.error('Error retrieving sm:', err);
+                return res.status(500).json({ message: 'Error retrieving sm', error: err });
+            }
+
+            if (results.length === 0) {
+                return res.status(404).json({ message: 'sm not found' });
+            }
+
+            // Loop through the results to modify each result as needed
+            results.forEach(result => {
+                // If the product contains picture data
+                if (result.picture) {
+                    // Include the base64-encoded picture data in the response
+                    result.picture = `data:image/jpeg;base64,${result.picture}`;
+                }
+            });
+
+            return res.status(200).json(results);
+        });
+    } catch (error) {
+        console.error('Error retrieving sm:', error);
+        return res.status(500).json({ message: 'Error retrieving sm', error });
+    }
+});
+
 // แก้ไข ยังไม่ลอง
 //เปลี่ยนจาก หรือ เป็นเช็คทีละอัน ไม่สมประกอบในส่วน ดีเทล รีซีบไม่มี 
 //กรณีแก้อันเดียว หรือไม่แก้ทั้งหมด

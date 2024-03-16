@@ -28,13 +28,15 @@ router.post('/addProductionOrder', (req, res, next) => {
 
 
     const query = "INSERT INTO productionOrder (cost_pricesum	,pdo_status) VALUES (null,?)";
+    
     connection.query(query, [productionOrder.pdo_status], (err, results) => {
+        
         if (!err) {
             const pdo_id = results.insertId;
 
             const values = productionOrderdetail.map(detail => [
                 detail.qty,
-                1,
+                productionOrder.pdo_status,
                 pdo_id,
                 detail.pd_id,
                 null // กำหนดให้ deleted_at เป็น null
@@ -58,6 +60,7 @@ router.post('/addProductionOrder', (req, res, next) => {
             return res.status(500).json({ message: "error", error: err });
         }
     });
+
 });
 
 router.get('/readall', (req, res, next) => {
@@ -398,6 +401,100 @@ router.patch('/editData/:pdo_id', (req, res, next) => {
     });
 });
 
+//ยืนยันการผลิต 2=กำลังดำเนินการผลิต
+// router.patch('/updatestatus/:pdo_id', (req, res, next) => {
+//     const pdo_id = req.params.pdo_id;
+//     var query = "UPDATE productionOrder SET pdo_status=2 WHERE pdo_id=?";
+//     connection.query(query, [ pdo_id], (err, results) => {
+//         if (!err) {
+//             if (results.affectedRows === 0) {
+//                 console.error(err);
+//                 return res.status(404).json({ message: "id does not found" });
+//             }
+//             return res.status(200).json({ message: "update success" });
+//         } else {
+//             return res.status(500).json(err);
+//         }
+//     });
+// });
+router.patch('/updatestatus/:pdo_id', (req, res, next) => {
+    const pdo_id = req.params.pdo_id;
+
+    
+    // Update pdo_status in productionOrder table
+    var updateProductionOrderQuery = "UPDATE productionOrder SET pdo_status = 2 WHERE pdo_id = ?";
+    connection.query(updateProductionOrderQuery, [pdo_id], (err, results) => {
+        if (err) {
+            console.error("Error updating pdo_status in productionOrder:", err);
+            return res.status(500).json(err);
+        }
+
+        if (results.affectedRows === 0) {
+            return res.status(404).json({ message: "Production order not found" });
+        }
+
+        // Update pdod_status in productionOrderdetail table
+        var updateProductionOrderDetailQuery = "UPDATE productionOrderdetail SET status = 2 WHERE pdo_id = ?";
+        connection.query(updateProductionOrderDetailQuery, [pdo_id], (detailErr, detailResults) => {
+            if (detailErr) {
+                console.error("Error updating pdod_status in productionOrderdetail:", detailErr);
+                return res.status(500).json(detailErr);
+            }
+
+            return res.status(200).json({ message: "Update success" });
+        });
+    });
+});
+
+//แก้ไขให้=3 เสร็จสิ้นแล้วสำหรับรายละเอียดบางอัน
+router.patch('/updatestatusdetail/:pdo_id', (req, res, next) => {
+    const pdod_id = req.params.pdo_id;
+    
+    
+    // Update pdo_status in productionOrder table
+    // Update pdod_status in productionOrderdetail table
+    var updateProductionOrderDetailQuery = "UPDATE productionOrderdetail SET status = 2 WHERE pdod_id = ?";
+    connection.query(updateProductionOrderDetailQuery, [pdod_id], (detailErr, detailResults) => {
+        if (detailErr) {
+            console.error("Error updating pdod_status in productionOrderdetail:", detailErr);
+            return res.status(500).json(detailErr);
+        }
+
+        return res.status(200).json({ message: "Update success" });
+    });
+});
+
+router.patch('/updatestatusdetail', (req, res, next) => {
+    const pdod_ids = req.body.pdod_ids; // รับ array หรือ list ของ pdod_id ที่ต้องการแก้ไข
+
+    if (!pdod_ids || pdod_ids.length === 0) {
+        return res.status(400).json({ message: "No pdod_id provided" });
+    }
+
+    // Update pdod_status in productionOrderdetail table for each pdod_id in the array
+    const updateQueries = pdod_ids.map(pdod_id => {
+        return new Promise((resolve, reject) => {
+            var updateProductionOrderDetailQuery = "UPDATE productionOrderdetail SET status = 3 WHERE pdod_id = ?";
+            connection.query(updateProductionOrderDetailQuery, [pdod_id], (detailErr, detailResults) => {
+                if (detailErr) {
+                    console.error("Error updating pdod_status in productionOrderdetail:", detailErr);
+                    reject(detailErr); // Reject หากเกิดข้อผิดพลาดในการอัปเดต
+                } else {
+                    resolve(detailResults); // Resolve หากอัปเดตสำเร็จ
+                }
+            });
+        });
+    });
+
+    // รวม Promise ของการอัปเดตทุก pdod_id และรอให้ทุก Promise เสร็จสิ้น
+    Promise.all(updateQueries)
+        .then(() => {
+            return res.status(200).json({ message: "Update success" });
+        })
+        .catch(err => {
+            return res.status(500).json(err); // คืนค่า error หากมีข้อผิดพลาดในการอัปเดต
+        });
+});
 
 
 
