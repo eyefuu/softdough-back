@@ -1477,6 +1477,7 @@ router.patch('/editData/:indl_id', (req, res, next) => {
     });
 });
 
+
 // วัตถุดิบใช้ no production
 
 //กลับมาดักกรณีไม่มีข้อมูล detail ห้ามเพิ่ม
@@ -1492,18 +1493,6 @@ router.post('/addUseIngrediantnew', (req, res, next) => {
         if (!err) {
             const indU_id = results.insertId;
 
-            // const values = ingredient_lot_detail.map(detail => [
-            //     detail.ind_id,
-            //     indl_id,
-            //     detail.qtypurchased,
-            //     detail.date_exp,
-            //     detail.price
-            // ]);
-
-            // const detailQuery = `
-            //     INSERT INTO ingredient_lot_detail (ind_id, indl_id, qtypurchased, date_exp, price) 
-            //     VALUES ?
-            // `;
             const values = ingredient_Used_detail.map(detail => [
                 indU_id,
                 detail.ind_id,
