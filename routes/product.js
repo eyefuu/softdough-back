@@ -36,8 +36,8 @@ router.get('/readcat', (req, res, next) => {
 router.patch('/updatecat/:pdc_id', (req, res, next) => {
     const pdc_id = req.params.pdc_id;
     const sm = req.body;
-    var query = "UPDATE productCategory SET pdc_name=? ,unit=?,qty_per_unit=? WHERE pdc_id=?";
-    connection.query(query, [sm.pdc_name, sm.unit, sm.qty_per_unit, pdc_id], (err, results) => {
+    var query = "UPDATE productCategory SET pdc_name=? WHERE pdc_id=?";
+    connection.query(query, [sm.pdc_name, pdc_id], (err, results) => {
         if (!err) {
             if (results.affectedRows === 0) {
                 console.error(err);
