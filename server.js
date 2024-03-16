@@ -3,7 +3,6 @@ const connection = require("./connection");
 const app = express();
 const PORT = 8080;
 const cors = require("cors");
-const bodyParser = require('body-parser');
 
 const cookieSession = require('cookie-session');
 // const bcrypt = require('bcrypt');
@@ -20,9 +19,6 @@ app.use(cookieSession({
     keys: ["key1", "key2"],
     maxAge: 3600 * 1000 //hr
 }));
-
-app.use(bodyParser.json({ limit: '50mb' }));
-app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
 const ownerRoute = require('./routes/owner')
 const staffRoute = require('./routes/staff')
