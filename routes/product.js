@@ -5,7 +5,10 @@ const connection = require("../connection");
 
 const multer = require('multer');
 const router = express.Router();
-const upload = multer();
+const upload = multer({ 
+    limits: { fileSize: 50 * 1024 * 1024 }});
+
+
 
 
 router.post('/addcat', (req, res, next) => {
@@ -595,8 +598,10 @@ const sharp = require('sharp');
 
 //+recipe 
 //ถ้าจะมีปห น่าจะมีแค่พวก detail ที่ส่งเป็นลิสท์ จาห tsx
+
+// น้ำขอแก้ไขนะ รูปภาพน้ำจะส่งตำแหน่งที่เก็บให้ อฟ นะ
 router.post('/addProductWithRecipe', upload.single('picture'), async (req, res) => {
-    const { pd_name, pd_qtyminimum, status, pdc_id, recipe, recipedetail } = req.body;
+    const { pd_name, pd_qtyminimum, status, pdc_id, recipe, recipedetail, picture } = req.body;
     const imageBuffer = req.file && req.file.buffer ? req.file.buffer : null;
 
     try {
@@ -612,8 +617,11 @@ router.post('/addProductWithRecipe', upload.single('picture'), async (req, res) 
             // เปลี่ยนข้อมูลรูปภาพเป็น base64
             imageBase64 = resizedImageBuffer.toString('base64');
         }
+        const pdc_id_int = parseInt(pdc_id);
+        const pd_qtyminimum_int = parseInt(pd_qtyminimum);
+        const productWithPicture = { pd_name, pd_qtyminimum:pd_qtyminimum_int, status, pdc_id:pdc_id_int, picture };
 
-        const productWithPicture = { pd_name, pd_qtyminimum, status, pdc_id, picture: imageBase64 };
+        console.log(productWithPicture)
 
         connection.beginTransaction((err) => {
             if (err) {
@@ -638,6 +646,8 @@ router.post('/addProductWithRecipe', upload.single('picture'), async (req, res) 
                 }
 
                 const productId = productResult.insertId;
+                console.log(recipe)
+                console.log(productId)
 
                 // ถ้ามีข้อมูลของ "recipe" และ "recipedetail" ให้เพิ่มเข้าไปด้วย
                 if (recipe && recipedetail) {
@@ -648,6 +658,8 @@ router.post('/addProductWithRecipe', upload.single('picture'), async (req, res) 
                                 return res.status(500).json({ message: 'Error inserting recipe', error: err });
                             });
                         }
+
+                        console.log(recipeResult)
 
                         const recipeId = recipeResult.insertId;
 
@@ -683,10 +695,11 @@ router.post('/addProductWithRecipe', upload.single('picture'), async (req, res) 
                                     });
                                 }
 
-                                return res.json({
+                                return res.status(200).json({
                                     productId,
                                     recipeId,
                                     message: 'Product and recipe added successfully!',
+                                    status: 200
                                 });
                             });
                         });
@@ -700,9 +713,10 @@ router.post('/addProductWithRecipe', upload.single('picture'), async (req, res) 
                             });
                         }
 
-                        return res.json({
+                        return res.status(200).json({
                             productId,
                             message: 'Product added successfully!',
+                            status: 200
                         });
                     });
                 }

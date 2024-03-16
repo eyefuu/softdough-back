@@ -445,7 +445,7 @@ router.get('/readlot/:id', (req, res, next) => {
         indl_id,
         CONCAT('L', LPAD(indl_id, 7, '0')) AS indl_id_name,
         DATE_FORMAT(created_at, '%Y-%m-%d') AS created_at,
-        DATE_FORMAT(update_at, '%Y-%m-%d') AS update_at
+        DATE_FORMAT(updated_at, '%Y-%m-%d') AS update_at
     FROM 
         ingredient_lot 
     WHERE 
