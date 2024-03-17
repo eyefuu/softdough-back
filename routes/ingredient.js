@@ -109,19 +109,21 @@ router.get('/unit', (req, res, next) => {
     });
 })
 
+
+
 //เผื่อadd unit เพิ่มเติม
-router.post('/unit', (req, res, next) => {
-    let unit = req.body;
-    query = "insert into unit (un_name,type) values(?,'1')";
-    connection.query(query, [unit.un_name, unit.type], (err, results) => {
-        if (!err) {
-            return res.status(200).json({ message: "success" });
-        } else {
-            console.error("MySQL Error:", err);
-            return res.status(500).json({ message: "error", error: err });
-        }
-    });
-})
+// router.post('/unit', (req, res, next) => {
+//     let unit = req.body;
+//     query = "insert into unit (un_name,type) values(?,'1')";
+//     connection.query(query, [unit.un_name, unit.type], (err, results) => {
+//         if (!err) {
+//             return res.status(200).json({ message: "success" });
+//         } else {
+//             console.error("MySQL Error:", err);
+//             return res.status(500).json({ message: "error", error: err });
+//         }
+//     });
+// })
 
 router.patch('/update/:id', (req, res, next) => {
     const ingredientId = req.params.id;
@@ -151,6 +153,35 @@ router.patch('/update/:id', (req, res, next) => {
         } else {
             console.error("MySQL Error:", err);
             return res.status(500).json({ message: "error", error: err });
+        }
+    });
+});
+
+
+//readlotdetail
+router.get('/readlotdetail', (req, res, next) => {
+    // const indl_id = req.params.id;
+    var query = `
+    SELECT 
+        CONCAT('L', LPAD(il.indl_id, 7, '0')) AS indl_id_name,
+        i.ind_name, il.qty_stock,i.qty_per_unit,
+        ROUND(il.qty_stock / i.qty_per_unit) AS stock_quantity,
+        DATE_FORMAT(il.date_exp, '%Y-%m-%d') AS date_exp
+    FROM 
+        ingredient_lot_detail il
+    JOIN
+        ingredient i ON il.ind_id = i.ind_id
+    `;
+
+    connection.query(query, (err, results) => {
+        if (!err) {
+            if (results.length > 0) {
+                return res.status(200).json(results);
+            } else {
+                return res.status(404).json({ message: "ingredient lot not found" });
+            }
+        } else {
+            return res.status(500).json(err);
         }
     });
 });
@@ -191,7 +222,7 @@ router.put('/updateIngredientLotStatus/:id', (req, res, next) => {
                     console.error("MySQL Error:", err);
                     return res.status(500).json({ message: "error", error: err });
                 }
-                
+
                 return res.status(200).json({ message: "Ingredient Lot status updated to 2 and ingredient stock updated" });
             });
         });
@@ -301,7 +332,7 @@ router.post('/addLotIngrediant', (req, res, next) => {
 //             console.error("MySQL Error:", err);
 //             return res.status(500).json({ message: "error", error: err });
 //         }
-        
+
 //         const indl_id = results.insertId;
 //         const values = [];
 
@@ -356,17 +387,18 @@ router.post('/addLotIngrediantnew', (req, res, next) => {
             console.error("MySQL Error:", err);
             return res.status(500).json({ message: "error", error: err });
         }
-        
+
         const indl_id = results.insertId;
         const values = [];
         // let updateIngredientStock = false;
-
+        console.log(ingredient_lot, ingredient_lot_detail)
         ingredient_lot_detail.forEach(detail => {
             connection.query("SELECT qty_per_unit FROM ingredient WHERE ind_id = ?", [detail.ind_id], (err, results) => {
                 if (err) {
                     console.error("MySQL Query Error:", err);
                     // handle error
                 } else {
+                    console.log(results[0])
                     let qty_per_unit = results[0].qty_per_unit;
                     let qty_stock = qty_per_unit * detail.qtypurchased;
 
@@ -394,7 +426,7 @@ router.post('/addLotIngrediantnew', (req, res, next) => {
                                 // console.log
                                 if (ingredient_lot.status === 2) {
                                     // const updateIngredientStock = true;
-                                    console.log("detail.ind_id",detail.ind_id)
+                                    console.log("detail.ind_id", detail.ind_id)
                                     const updateIngredientStockQuery = `UPDATE ingredient SET ind_stock = ind_stock + ? WHERE ind_id = ?`;
                                     ingredient_lot_detail.forEach(detail => {
                                         connection.query(updateIngredientStockQuery, [detail.qtypurchased, detail.ind_id], (err, results) => {
@@ -406,7 +438,7 @@ router.post('/addLotIngrediantnew', (req, res, next) => {
                                 }
                                 // if (updateIngredientStock) {
                                 //     // Update ingredient stock
-                                    
+
                                 // }
                                 return res.status(200).json({ message: "success", results });
                             }
@@ -417,89 +449,7 @@ router.post('/addLotIngrediantnew', (req, res, next) => {
         });
     });
 });
-
-//
-
-// router.post('/addLotIngrediantdetail', (req, res, next) => {
-//     const ingredient_lot_detail = req.body; // Extract data from the request body
-
-//     // SQL query to insert data into the table
-//     const query = `
-//         INSERT INTO Ingredient_lot_detail (ind_id, indl_id, qtypurchased, date_exp, price) 
-//         VALUES (?, ?, ?, ?, ?)
-//     `;
-
-//     // Execute the SQL query
-//     connection.query(query, [
-//         ingredient_lot_detail.ind_id, 
-//         ingredient_lot_detail.indl_id, 
-//         ingredient_lot_detail.qtypurchased, 
-//         ingredient_lot_detail.date_exp, 
-//         ingredient_lot_detail.price
-//     ], (err, results) => {
-//         if (err) {
-//             console.error("MySQL Error:", err);
-//             return res.status(500).json({ message: "error", error: err });
-//         } else {
-//             return res.status(200).json({ message: "success" });
-//         }
-//     });
-// });
-
-//ถ้ารวมสมประกอบไม่ได้ใช้
-//เพิ่มได้ตัวเดียว
-router.post('/addLotIngrediantdetail', (req, res, next) => {
-    const ingredient_lot_detail = req.body;
-
-    const query = `
-        INSERT INTO Ingredient_lot_detail (ind_id, indl_id, qtypurchased, date_exp, price) 
-        VALUES (?, ?, ?, ?, ?)
-    `;
-
-    connection.query(query, [
-        ingredient_lot_detail.ind_id,
-        ingredient_lot_detail.indl_id,
-        ingredient_lot_detail.qtypurchased,
-        ingredient_lot_detail.date_exp,
-        ingredient_lot_detail.price
-    ], (err, results) => {
-        if (err) {
-            console.error("MySQL Error:", err);
-            return res.status(500).json({ message: "error", error: err });
-        } else {
-            return res.status(200).json({ message: "success", data: ingredient_lot_detail });  // Sending back the added data
-        }
-    });
-});
-//ถ้ารวมสมประกอบไม่ได้ใช้
-//เพิ่มได้หลายตัว
-router.post('/addLotIngrediantdetails', (req, res, next) => {
-    const ingredient_lot_details = req.body;
-
-    const values = ingredient_lot_details.map(detail => [
-        detail.ind_id,
-        detail.indl_id,
-        detail.qtypurchased,
-        detail.date_exp,
-        detail.price
-    ]);
-
-    const query = `
-        INSERT INTO Ingredient_lot_detail (ind_id, indl_id, qtypurchased, date_exp, price) 
-        VALUES ?
-    `;
-
-    connection.query(query, [values], (err, results) => {
-        if (err) {
-            console.error("MySQL Error:", err);
-            return res.status(500).json({ message: "error", error: err });
-        } else {
-            return res.status(200).json({ message: "success", data: ingredient_lot_details });
-        }
-    });
-});
-
-
+//ingredientLotDetails id
 router.get('/ingredientLotDetails/:indl_id', (req, res, next) => {
     const indl_id = req.params.indl_id;
 
@@ -523,74 +473,6 @@ router.get('/ingredientLotDetails/:indl_id', (req, res, next) => {
 });
 
 
-
-// router.get('/readLotIngrediantdetail', (req, res, next) => {
-//     const indlde_id = req.params.id;
-//     var query = `
-//     SELECT ingredient_lot_detail.*, 
-//     ingredient.ind_name AS ind_name,
-// FROM Ingredient_lot_detail 
-// LEFT JOIN ingredient AS ingredientname ON ingredient_lot_detail.ind_id = ingredientname.ind_id
-// WHERE Ingredient_lot_detail.indlde_id  = ?;  
-//     `;
-
-//     connection.query(query, [indlde_id], (err, results) => {
-//         if (!err) {
-//             if (results.length > 0) {
-//                 return res.status(200).json(results[0]);
-//             } else {
-//                 return res.status(404).json({ message: "ingredient not found" });
-//             }
-//         } else {
-//             return res.status(500).json(err);
-//         }
-//     });
-// });
-
-//ถ้ารวมสมประกอบไม่ได้ใช้
-// router.delete('/ingredientLotDetails/:indlde_id ', (req, res, next) => {
-//     const indlde_id = req.params.indlde_id ;
-
-//     const query = `
-//         DELETE FROM Ingredient_lot_detail 
-//         WHERE indlde_id  = ?
-//     `;
-
-//     connection.query(query, [indlde_id], (err, results) => {
-//         if (err) {
-//             console.error("MySQL Error:", err);
-//             return res.status(500).json({ message: "error", error: err });
-//         } else {
-//             return res.status(200).json({ message: "success", data: results });
-//         }
-//     });
-// });
-
-//ไม่ใช้
-router.delete('/ingredientLotDetails/:indlde_id', (req, res, next) => {
-    const indlde_id = req.params.indlde_id;
-
-    // Validation: Check if indlde_id is a number (assuming it's a numeric ID)
-    if (isNaN(indlde_id)) {
-        return res.status(400).json({ message: "Invalid ID format" });
-    }
-
-    const query = `
-        DELETE FROM Ingredient_lot_detail 
-        WHERE indlde_id = ?
-    `;
-
-    connection.query(query, [indlde_id], (err, results) => {
-        if (err) {
-            console.error("MySQL Error:", err);
-            return res.status(500).json({ message: "error", error: err });
-        } else if (results.affectedRows === 0) { // Check if any rows were affected
-            return res.status(404).json({ message: "ID not found", data: results });
-        } else {
-            return res.status(200).json({ message: "success", data: results });
-        }
-    });
-});
 //ใช้ CONCAT ในคำสั่ง SQL เพื่อรวมค่า L กับค่า indl_id และใช้ LPAD เพื่อเติมเลข 0 ให้ครบ 4 ตัวอักษร
 //DATE_FORMAT function ของ MySQL
 router.get('/readlot', (req, res, next) => {
@@ -641,457 +523,7 @@ router.get('/readlot/:id', (req, res, next) => {
 
 
 
-// editยังไม่ลอง
-// นับได้แต่มีปห key un key something
-// ยังไม่ทำกรณีมากกว่า
-//2แถว อัปเดตเป็นค่าเดียวกันทั้งสองแถว อาจจะเปลี่ยนเป็นเช็ค ind_id แล้วลบเอามั้ย
-//มีปัญหา
-// router.patch('/editLotIngrediant/:indl_id', (req, res, next) => {
-//     const indl_id = req.params.indl_id;
-//     const dataToEdit = req.body.dataToEdit;
-
-//     if (!dataToEdit || dataToEdit.length === 0) {
-//         return res.status(400).json({ message: "error", error: "No data to edit provided" });
-//     }
-
-//     // ตัวแปรสำหรับเก็บคำสั่ง SQL ที่จะใช้ในการแก้ไขข้อมูล
-//     const updateValues = dataToEdit.map(detail => [
-//         detail.ind_id,
-//         indl_id,
-//         detail.qtypurchased,
-//         detail.date_exp,
-//         detail.price
-//     ]);
-
-//     // ตรวจสอบจำนวนแถวที่มีอยู่
-//     const existingRowCountQuery = "SELECT COUNT(*) as rowCount FROM Ingredient_lot_detail WHERE indl_id = ?";
-//     connection.query(existingRowCountQuery, [indl_id], (err, results) => {
-//         if (err) {
-//             console.error("MySQL Existing Row Count Query Error:", err);
-//             return res.status(500).json({ message: "error", error: err });
-//         }
-
-//         const existingRowCount = results[0].rowCount;
-
-//         // ตัวแปรสำหรับเก็บคำสั่ง SQL ที่จะใช้ในการอัปเดตข้อมูลที่ต้องการ
-//         let updateQuery = "";
-
-//         if (dataToEdit.length == existingRowCount) {
-//             // จำนวนแถวที่ต้องการแก้ไขมากกว่าหรือเท่ากับจำนวนแถวที่มีอยู่
-//             // ดำเนินการอัปเดตข้อมูล
-//             updateQuery = `
-//                 UPDATE Ingredient_lot_detail
-//                 SET
-//                     ind_id = ?,
-//                     qtypurchased = ?,
-//                     date_exp = ?,
-//                     price = ?
-//                 WHERE
-//                     indl_id = ?;
-//             `;
-
-//             console.log("dataToEdit.length:", dataToEdit.length);
-//             console.log("existingRowCount:", existingRowCount);
-
-//             // ใช้ loop ในการทำ update ทีละรายการ
-//             dataToEdit.forEach(detail => {
-//                 const updateDetailValues = [
-//                     detail.qtypurchased,
-//                     detail.date_exp,
-//                     detail.price,
-//                     detail.ind_id,
-//                     indl_id
-//                 ];
-
-//                 connection.query(updateQuery, updateDetailValues, (err, results) => {
-//                     if (err) {
-//                         console.error("MySQL Update Query Error:", err);
-//                         return res.status(500).json({ message: "error", error: err });
-//                     }
-
-//                     // คำสั่งที่ต้องการทำหลังจาก update แต่ละรายการ
-//                     console.log(`Updated record for ind_id ${detail.ind_id}`);
-//                 });
-//             });
-
-//             // ตัวแปรสำหรับเก็บคำสั่ง SQL ที่จะใช้ในการอัปเดตข้อมูลที่ต้องการ
-//             const updateLotQuery = "UPDATE ingredient_lot SET update_at = CURRENT_TIMESTAMP WHERE indl_id = ?";
-//             connection.query(updateLotQuery, [indl_id], (err, results) => {
-//                 if (err) {
-//                     console.error("MySQL Update Lot Query Error:", err);
-//                     return res.status(500).json({ message: "error", error: err });
-//                 }
-
-//                 console.log("Transaction Complete.");
-//                 res.status(200).json({ message: "success", indl_id });
-//             });
-//         }
-// //         console.log("dataToEdit.length:", dataToEdit.length);
-// //         console.log("existingRowCount:", existingRowCount);
-// //         if (dataToEdit.length == existingRowCount) {
-// //             // จำนวนแถวที่ต้องการแก้ไขมีจำนวนเท่ากับจำนวนแถวที่มีอยู่
-// //             // ดำเนินการอัปเดตข้อมูล
-// //             const updateQuery = `
-// //     UPDATE Ingredient_lot_detail
-// //     SET
-// //         qtypurchased = ?,
-// //         date_exp = ?,
-// //         price = ?,
-// //         ind_id = ?
-// //     WHERE
-// //         indl_id = ?;
-// // `;
-
-// //             // ให้ใช้ forEach ในการทำ update ทีละรายการ
-// //             dataToEdit.forEach(detail => {
-// //                 const updateValues = [
-// //                     detail.qtypurchased,
-// //                     detail.date_exp,
-// //                     detail.price,
-// //                     detail.ind_id,
-// //                     indl_id
-// //                 ];
-
-// //                 connection.query(updateQuery, updateValues, (err, results) => {
-// //                     if (err) {
-// //                         console.error("MySQL Update Query Error:", err);
-// //                         return res.status(500).json({ message: "error", error: err });
-// //                     }
-
-// //                     // คำสั่งที่ต้องการทำหลังจาก update แต่ละรายการ
-// //                 });
-// //             });
-
-
-// //             // ตัวแปรสำหรับเก็บคำสั่ง SQL ที่จะใช้ในการอัปเดตข้อมูลที่ต้องการ
-// //             const updateLotQuery = "UPDATE ingredient_lot SET update_at = CURRENT_TIMESTAMP WHERE indl_id = ?";
-// //             connection.query(updateLotQuery, [indl_id], (err, updateLotResults) => {
-// //                 if (err) {
-// //                     console.error("MySQL Update Lot Query Error:", err);
-// //                     return res.status(500).json({ message: "error", error: err });
-// //                 }
-
-// //                 console.log("Transaction Complete.");
-// //                 res.status(200).json({ message: "success", indl_id });
-// //                 console.log(req.body);
-// //             });
-// //         }
-
-//         else if (dataToEdit.length > existingRowCount) {
-//             // จำนวนแถวที่ต้องการแก้ไขมากกว่าจำนวนแถวที่มีอยู่
-//             // ดำเนินการเพิ่มข้อมูลใหม่หรือทำงานอื่น ๆ ที่ต้องการ
-//             // เช่น INSERT ข้อมูลใหม่
-
-//             // สร้าง SQL query สำหรับ insert หรือ update ข้อมูล
-//             const upsertQuery = `
-//                 INSERT INTO Ingredient_lot_detail (ind_id, indl_id, qtypurchased, date_exp, price)
-//                 VALUES (?, ?, ?, ?, ?)
-//                 ON DUPLICATE KEY UPDATE
-//                     qtypurchased = VALUES(qtypurchased),
-//                     date_exp = VALUES(date_exp),
-//                     price = VALUES(price);
-//             `;
-
-//             // ให้ใช้ forEach ในการทำ insert ทีละรายการ
-//             dataToEdit.forEach(detail => {
-//                 const upsertValues = [
-//                     detail.ind_id,
-//                     indl_id,
-//                     detail.qtypurchased,
-//                     detail.date_exp,
-//                     detail.price
-//                 ];
-
-//                 connection.query(upsertQuery, upsertValues, (err, results) => {
-//                     if (err) {
-//                         console.error("MySQL Upsert Query Error:", err);
-//                         return res.status(500).json({ message: "error", error: err });
-//                     }
-
-//                     // คำสั่งที่ต้องการทำหลังจาก insert หรือ update แต่ละรายการ
-//                 });
-//             });
-
-//             // ตัวแปรสำหรับเก็บคำสั่ง SQL ที่จะใช้ในการอัปเดตข้อมูลที่ต้องการ
-//             const updateLotQuery = "UPDATE ingredient_lot SET update_at = CURRENT_TIMESTAMP WHERE indl_id = ?";
-//             connection.query(updateLotQuery, [indl_id], (err, results) => {
-//                 if (err) {
-//                     console.error("MySQL Update Lot Query Error:", err);
-//                     return res.status(500).json({ message: "error", error: err });
-//                 }
-
-//                 console.log("Transaction Complete.");
-//                 res.status(200).json({ message: "success", indl_id });
-//             });
-//         }
-
-
-//         else {
-//             // จำนวนแถวที่ต้องการแก้ไขน้อยกว่าจำนวนแถวที่มีอยู่
-//             // ดำเนินการลบข้อมูลที่เกิน
-//             const deleteQuery = `
-//                 DELETE FROM Ingredient_lot_detail
-//                 WHERE (ind_id = ? AND indl_id = ?)
-//                    OR (ind_id = ? AND indl_id = ?)
-//                 LIMIT ?;
-//             `;
-
-//             const deleteValues = dataToEdit.map(detail => [
-//                 detail.ind_id,
-//                 indl_id,
-//                 detail.ind_id,
-//                 indl_id
-//             ]);
-
-//             // ทำการทำให้อาร์เรย์ของอาร์เรย์เป็นอาร์เรย์เดียว
-//             const flattenedDeleteValues = deleteValues.reduce((acc, val) => acc.concat(val), []);
-
-//             // เพิ่มค่า LIMIT ไปที่ท้ายของอาร์เรย์
-//             flattenedDeleteValues.push(existingRowCount - dataToEdit.length);
-
-//             connection.query(deleteQuery, flattenedDeleteValues, (err, results) => {
-//                 if (err) {
-//                     console.error("MySQL Delete Query Error:", err);
-//                     return res.status(500).json({ message: "error", error: err });
-//                 }
-
-//                 // ตัวแปรสำหรับเก็บคำสั่ง SQL ที่จะใช้ในการอัปเดตข้อมูลที่ต้องการ
-//                 const updateLotQuery = "UPDATE ingredient_lot SET update_at = CURRENT_TIMESTAMP WHERE indl_id = ?";
-//                 connection.query(updateLotQuery, [indl_id], (err, results) => {
-//                     if (err) {
-//                         console.error("MySQL Update Lot Query Error:", err);
-//                         return res.status(500).json({ message: "error", error: err });
-//                     }
-
-//                     console.log("Transaction Complete.");
-//                     res.status(200).json({ message: "success", indl_id });
-//                 });
-//             });
-//         }
-//     });
-// });
-
-//ไม่ได้
-// router.patch('/editLotIngrediant/:indl_id', async (req, res, next) => {
-//     const indl_id = req.params.indl_id;
-//     const dataToEdit = req.body.dataToEdit;
-
-//     if (!dataToEdit || dataToEdit.length === 0) {
-//         return res.status(400).json({ message: "error", error: "No data to edit provided" });
-//     }
-
-//     // สร้าง SQL query สำหรับ insert หรือ update ข้อมูล
-//     const upsertQuery = `
-//         INSERT INTO Ingredient_lot_detail (ind_id, indl_id, qtypurchased, date_exp, price)
-//         VALUES (?, ?, ?, ?, ?)
-//         ON DUPLICATE KEY UPDATE
-//             qtypurchased = VALUES(qtypurchased),
-//             date_exp = VALUES(date_exp),
-//             price = VALUES(price);
-//     `;
-
-//     // ให้ใช้ forEach ในการทำ insert ทีละรายการ
-//     for (const detail of dataToEdit) {
-//         const upsertValues = [
-//             detail.ind_id,
-//             indl_id,
-//             detail.qtypurchased,
-//             detail.date_exp,
-//             detail.price
-//         ];
-
-//         try {
-//             const existingData = await connection.query(`SELECT * FROM Ingredient_lot_detail WHERE ind_id = ? AND indl_id = ?`, [detail.ind_id, indl_id]);
-
-//             if (existingData.length > 0) {
-//                 // ข้อมูลมีอยู่แล้ว ให้ทำการอัปเดต
-//                 const updateValues = [
-//                     detail.qtypurchased,
-//                     detail.date_exp,
-//                     detail.price
-//                 ];
-
-//                 await connection.query(upsertQuery, upsertValues);
-//             } else {
-//                 // ข้อมูลไม่มีอยู่แล้ว ให้ทำการ INSERT
-//                 await connection.query(upsertQuery, upsertValues);
-//             }
-//         } catch (err) {
-//             console.error("MySQL Upsert Query Error:", err);
-//             return res.status(500).json({ message: "error", error: err });
-//         }
-//     }
-
-//     // ตัวแปรสำหรับเก็บคำสั่ง SQL ที่จะใช้ในการอัปเดตข้อมูลที่ต้องการ
-//     const updateLotQuery = "UPDATE ingredient_lot SET update_at = CURRENT_TIMESTAMP WHERE indl_id = ?";
-
-//     try {
-//         await connection.query(updateLotQuery, [indl_id]);
-//         console.log("Transaction Complete.");
-//         res.status(200).json({ message: "success", indl_id });
-//     } catch (err) {
-//         console.error("MySQL Update Lot Query Error:", err);
-//         res.status(500).json({ message: "error", error: err });
-//     }
-// });
-
-//ใหม่สุด
-//ทำหลายอันบ่าได้ 
-//น้อยกว่าก็แปลกๆ
-// router.patch('/editLotIngrediant/:indl_id', (req, res, next) => {
-//     const indl_id = req.params.indl_id;
-//     const dataToEdit = req.body.dataToEdit;
-
-//     if (!dataToEdit || dataToEdit.length === 0) {
-//         return res.status(400).json({ message: "error", error: "No data to edit provided" });
-//     }
-
-//     // ตรวจสอบจำนวนแถวที่มีอยู่
-//     const existingRowCountQuery = "SELECT COUNT(*) as rowCount FROM Ingredient_lot_detail WHERE indl_id = ?";
-//     connection.query(existingRowCountQuery, [indl_id], (err, results) => {
-//         if (err) {
-//             console.error("MySQL Existing Row Count Query Error:", err);
-//             return res.status(500).json({ message: "error", error: err });
-//         }
-
-//         const existingRowCount = results[0].rowCount;
-
-//         if (dataToEdit.length == existingRowCount) {
-//             // จำนวนแถวที่ต้องการแก้ไขมีจำนวนเท่ากับจำนวนแถวที่มีอยู่
-//             // ดำเนินการอัปเดตข้อมูล
-//             const updateQuery = `
-//                 UPDATE Ingredient_lot_detail
-//                 SET
-//                     ind_id = ?,
-//                     qtypurchased = ?,
-//                     date_exp = ?,
-//                     price = ?
-//                 WHERE
-//                     indl_id = ?;
-//             `;
-
-//             // ให้ใช้ loop ในการทำ update ทีละรายการ
-//             dataToEdit.forEach(detail => {
-//                 const updateValues = [
-//                     detail.ind_id,
-//                     detail.qtypurchased,
-//                     detail.date_exp,
-//                     detail.price,
-//                     indl_id
-//                 ];
-
-//                 connection.query(updateQuery, updateValues, (err, results) => {
-//                     if (err) {
-//                         console.error("MySQL Update Query Error:", err);
-//                         return res.status(500).json({ message: "error", error: err });
-//                     }
-
-//                     console.log(`Updated record for ind_id ${detail.ind_id}`);
-//                 });
-//             });
-
-//             // ตัวแปรสำหรับเก็บคำสั่ง SQL ที่จะใช้ในการอัปเดตข้อมูลที่ต้องการ
-//             const updateLotQuery = "UPDATE ingredient_lot SET update_at = CURRENT_TIMESTAMP WHERE indl_id = ?";
-//             connection.query(updateLotQuery, [indl_id], (err, results) => {
-//                 if (err) {
-//                     console.error("MySQL Update Lot Query Error:", err);
-//                     return res.status(500).json({ message: "error", error: err });
-//                 }
-
-//                 console.log("Transaction Complete.");
-//                 res.status(200).json({ message: "success", indl_id });
-//             });
-//         } else if (dataToEdit.length > existingRowCount) {
-//             // จำนวนแถวที่ต้องการแก้ไขมากกว่าจำนวนแถวที่มีอยู่
-//             // ดำเนินการเพิ่มข้อมูลใหม่หรือทำงานอื่น ๆ ที่ต้องการ
-//             // เช่น INSERT ข้อมูลใหม่
-
-//             // สร้าง SQL query สำหรับ insert หรือ update ข้อมูล
-//             const upsertQuery = `
-//                 INSERT INTO Ingredient_lot_detail (ind_id, indl_id, qtypurchased, date_exp, price)
-//                 VALUES (?, ?, ?, ?, ?)
-//                 ON DUPLICATE KEY UPDATE
-//                     qtypurchased = VALUES(qtypurchased),
-//                     date_exp = VALUES(date_exp),
-//                     price = VALUES(price);
-//             `;
-
-//             // ให้ใช้ forEach ในการทำ insert ทีละรายการ
-//             dataToEdit.forEach(detail => {
-//                 const upsertValues = [
-//                     detail.ind_id,
-//                     indl_id,
-//                     detail.qtypurchased,
-//                     detail.date_exp,
-//                     detail.price
-//                 ];
-
-//                 connection.query(upsertQuery, upsertValues, (err, results) => {
-//                     if (err) {
-//                         console.error("MySQL Upsert Query Error:", err);
-//                         return res.status(500).json({ message: "error", error: err });
-//                     }
-
-//                     // คำสั่งที่ต้องการทำหลังจาก insert หรือ update แต่ละรายการ
-//                 });
-//             });
-
-//             // ตัวแปรสำหรับเก็บคำสั่ง SQL ที่จะใช้ในการอัปเดตข้อมูลที่ต้องการ
-//             const updateLotQuery = "UPDATE ingredient_lot SET update_at = CURRENT_TIMESTAMP WHERE indl_id = ?";
-//             connection.query(updateLotQuery, [indl_id], (err, results) => {
-//                 if (err) {
-//                     console.error("MySQL Update Lot Query Error:", err);
-//                     return res.status(500).json({ message: "error", error: err });
-//                 }
-
-//                 console.log("Transaction Complete.");
-//                 res.status(200).json({ message: "success up", indl_id });
-//             });
-//         } else {
-//             // จำนวนแถวที่ต้องการแก้ไขน้อยกว่าจำนวนแถวที่มีอยู่
-//             // ดำเนินการลบข้อมูลที่เกิน
-//             const deleteQuery = `
-//                 DELETE FROM Ingredient_lot_detail
-//                 WHERE (ind_id = ? AND indl_id = ?)
-//                 LIMIT ?;
-//             `;
-
-//             const deleteValues = dataToEdit.map(detail => [
-//                 detail.ind_id,
-//                 indl_id,
-//                 detail.ind_id,
-//                 indl_id
-//             ]);
-
-//             // ทำการทำให้อาร์เรย์ของอาร์เรย์เป็นอาร์เรย์เดียว
-//             const flattenedDeleteValues = deleteValues.reduce((acc, val) => acc.concat(val), []);
-
-//             // เพิ่มค่า LIMIT ไปที่ท้ายของอาร์เรย์
-//             flattenedDeleteValues.push(existingRowCount - dataToEdit.length);
-
-//             connection.query(deleteQuery, flattenedDeleteValues, (err, results) => {
-//                 if (err) {
-//                     console.error("MySQL Delete Query Error:", err);
-//                     return res.status(500).json({ message: "error", error: err });
-//                 }
-
-//                 // ตัวแปรสำหรับเก็บคำสั่ง SQL ที่จะใช้ในการอัปเดตข้อมูลที่ต้องการ
-//                 const updateLotQuery = "UPDATE ingredient_lot SET update_at = CURRENT_TIMESTAMP WHERE indl_id = ?";
-//                 connection.query(updateLotQuery, [indl_id], (err, results) => {
-//                     if (err) {
-//                         console.error("MySQL Update Lot Query Error:", err);
-//                         return res.status(500).json({ message: "error", error: err });
-//                     }
-
-//                     console.log("Transaction Complete.");
-//                     res.status(200).json({ message: "success de", indl_id });
-//                 });
-//             });
-//         }
-//     });
-// });
-
-
+// edit lot
 //ลองตัวใหม่ วิธีใหม่ มั้ง
 //ลองเปลี่ยนเป็นวิธีที่ใช้ เพื่อให้คุณสามารถใช้ค่าที่ได้จาก SELECT query ในโปรแกรม Node.js ได้, คุณสามารถทำการประมวลผลผลลัพธ์ที่ได้จาก query นั้นด้วยการใช้ callback function หรือ Promise (ในกรณีที่มีการใช้ library ที่รองรับ Promise) ขึ้นอยู่กับว่าคุณต้องการให้โค้ดของคุณมีโครงสร้างแบบไหน.
 
@@ -1281,245 +713,774 @@ router.get('/readlot/:id', (req, res, next) => {
 
 //ลองแก้อันบนเป็น soft delete
 //ได้ละเหลือแก้ตรงแสดงให้ไม่เลือกอันที่มี delete_at
+//มาเพิ่มหักเข้า-ออก ใน lot เพิ่ม status และใส่เงื่อนไขใน in up
 router.patch('/editData/:indl_id', (req, res, next) => {
     const indl_id = req.params.indl_id;
     // const dataToEdit = req.body.dataToEdit;
     const dataToEdit = req.body.dataaToEdit;
+    const status = req.body
+
 
     if (!dataToEdit || dataToEdit.length === 0) {
         return res.status(400).json({ message: "error", error: "No data to edit provided" });
     }
 
-    // แยกข้อมูลที่ต้องการอัปเดต แยกเป็นข้อมูลที่ต้องการเพิ่ม และข้อมูลที่ต้องการลบ
-    const updateData = [];
-    const insertData = [];
-    const deleteData = [];
-    const query = `SELECT ingredient_lot_detail.ind_id FROM ingredient_lot_detail WHERE indl_id = ?`;
-    console.log(dataToEdit)
-
-    let indIdsQ = dataToEdit.map(detail => detail.ind_id).filter(id => id !== undefined);
-    console.log(indIdsQ);
-    let indIds;
-
-    connection.query(query, [indl_id], (err, results) => {
+    const query1 = 'UPDATE ingredient_lot SET status = ? WHERE indl_id = ?'
+    connection.query(query1, [status,indl_id], (err, results) => {
         if (err) {
             console.error("MySQL Query Error:", err);
-            // handle error
         }
 
-        // ถ้าไม่มี error, results จะเป็น array ของ object ที่มี key เป็น 'ind_id'
-        indIds = results.map(result => result.ind_id);
-        // console.log("indIds:", indIds);
+        // แยกข้อมูลที่ต้องการอัปเดต แยกเป็นข้อมูลที่ต้องการเพิ่ม และข้อมูลที่ต้องการลบ
+        const updateData = [];
+        const insertData = [];
+        const deleteData = [];
+        const query = `SELECT ingredient_lot_detail.ind_id FROM ingredient_lot_detail WHERE indl_id = ?`;
+        console.log(dataToEdit)
 
-        indIds.forEach(detail => {
-            //ยังอยู่ตรงนี้
-            // console.log(detail)
-            const selectedData = dataToEdit.filter(item => item.ind_id === detail);
-            // const indIdsNotInIndIdsQdata = dataToEdit.filter(item => item.ind_id === indIdsNotInIndIdsQ);
-            // console.log("for insert indIdsNotInIndIdsQdata",indIdsNotInIndIdsQdata)
+        let indIdsQ = dataToEdit.map(detail => detail.ind_id).filter(id => id !== undefined);
+        console.log(indIdsQ);
+        let indIds;
 
-            console.log("for up selectedData", selectedData)
-
-            // console.log("for insert indIdsNotInIndIdsQ", indIdsNotInIndIdsQ)
-
-            if (detail) {
-                // ตรวจสอบว่า ind_id มีอยู่ในฐานข้อมูลหรือไม่
-                // const query = `SELECT ingredient_lot_detail.ind_id FROM ingredient_lot_detail WHERE indl_id = ?`;
-
-                if (indIdsQ.includes(detail)) {
-                    // ind_id มีอยู่ในฐานข้อมูล ให้ทำการอัปเดต
-                    console.log("Update data:", selectedData);
-                    updateData.push(selectedData);
-                } else {
-                    if (indIds) {
-                        // ind_id ไม่มีอยู่ในฐานข้อมูล ให้ทำการลบ
-                        console.log("delete data:", detail);
-                        deleteData.push(detail);
-                    } else {
-                        // ind_id ไม่ได้ระบุ ให้ทำการเพิ่ม
-                        //ไม่ทำงาน
-                        //ค่อยคิด
-                        console.log("nonono insert data:", selectedData);
-                        insertData.push(selectedData);
-                    }
-                }
-
-            } else {
-                // ind_id ไม่ได้ระบุ ให้ทำการเพิ่ม
-                //ค่อยคิด
-                console.log(detail)
-                insertData.push(detail);
+        connection.query(query, [indl_id], (err, results) => {
+            if (err) {
+                console.error("MySQL Query Error:", err);
+                // handle error
             }
+
+            // ถ้าไม่มี error, results จะเป็น array ของ object ที่มี key เป็น 'ind_id'
+            indIds = results.map(result => result.ind_id);
+            // console.log("indIds:", indIds);
+
+            indIds.forEach(detail => {
+                //ยังอยู่ตรงนี้
+                // console.log(detail)
+                const selectedData = dataToEdit.filter(item => item.ind_id === detail);
+                // const indIdsNotInIndIdsQdata = dataToEdit.filter(item => item.ind_id === indIdsNotInIndIdsQ);
+                // console.log("for insert indIdsNotInIndIdsQdata",indIdsNotInIndIdsQdata)
+
+                console.log("for up selectedData", selectedData)
+
+                // console.log("for insert indIdsNotInIndIdsQ", indIdsNotInIndIdsQ)
+
+                if (detail) {
+                    // ตรวจสอบว่า ind_id มีอยู่ในฐานข้อมูลหรือไม่
+                    // const query = `SELECT ingredient_lot_detail.ind_id FROM ingredient_lot_detail WHERE indl_id = ?`;
+
+                    if (indIdsQ.includes(detail)) {
+                        // ind_id มีอยู่ในฐานข้อมูล ให้ทำการอัปเดต
+                        console.log("Update data:", selectedData);
+                        updateData.push(selectedData);
+                    } else {
+                        if (indIds) {
+                            // ind_id ไม่มีอยู่ในฐานข้อมูล ให้ทำการลบ
+                            console.log("delete data:", detail);
+                            deleteData.push(detail);
+                        } else {
+                            // ind_id ไม่ได้ระบุ ให้ทำการเพิ่ม
+                            //ไม่ทำงาน
+                            //ค่อยคิด
+                            console.log("nonono insert data:", selectedData);
+                            insertData.push(selectedData);
+                        }
+                    }
+
+                } else {
+                    // ind_id ไม่ได้ระบุ ให้ทำการเพิ่ม
+                    //ค่อยคิด
+                    console.log(detail)
+                    insertData.push(detail);
+                }
+            });
+
+            const indIdsNotInIndIdsQ = indIdsQ.filter(id => !indIds.includes(id));
+            console.log(indIdsNotInIndIdsQ)
+
+            if (indIdsNotInIndIdsQ != []) {
+                indIdsNotInIndIdsQ.forEach(detail => {
+                    console.log(detail)
+                    const indIdsNotInIndIdsQdata = dataToEdit.filter(item => item.ind_id === detail);
+                    console.log("Insert data:", indIdsNotInIndIdsQdata);
+                    insertData.push(indIdsNotInIndIdsQdata);
+                });
+
+            }
+            console.log(deleteData, insertData, updateData)
+            // indIdsQ.forEach(detail => {
+
+            //     console.log(detail)
+            //     const selectedData = dataToEdit.filter(item => item.ind_id === detail);
+
+            // });
+            console.log("de length", deleteData.length)
+            console.log("in length", insertData.length)
+            console.log("ed length", updateData.length)
+            if (deleteData.length > 0) {
+                // const deleteQuery = "DELETE FROM Ingredient_lot_detail WHERE ind_id = ? AND indl_id = ?";
+                const deleteQuery = "UPDATE ingredient_lot_detail SET deleted_at = CURRENT_TIMESTAMP WHERE ind_id = ? AND indl_id = ?";
+                deleteData.forEach(detail => {
+                    const deleteValues = [detail, indl_id];
+                    console.log(deleteValues)
+
+                    connection.query(deleteQuery, deleteValues, (err, results) => {
+                        if (err) {
+                            console.error("MySQL Delete Query Error:", err);
+                            return res.status(500).json({ message: "error", error: err });
+                        }
+
+                        console.log("Deleted data:", results);
+                    });
+                });
+            }
+
+            // ตรวจสอบว่ามีข้อมูลที่ต้องการเพิ่มหรือไม่
+            //ยังไม่ได้
+            if (insertData.length > 0) {
+                console.log("database inn", insertData)
+                console.log("indl id", indl_id)
+                // INSERT INTO Ingredient_lot_detail (ind_id, indl_id, qtypurchased, date_exp, price)
+                //                 VALUES (?, ?, ?, ?, ?)
+
+                // const insertQuery = "INSERT INTO ingredient_lot_detail (ind_id, qtypurchased, date_exp, price, indl_id) VALUES (?,?,?,?,?)";
+
+                // const flattenedineData = insertData.flat();
+
+                // flattenedineData.forEach(detail => {
+                //     const insertValues = [
+                //         detail.ind_id,
+                //         detail.qtypurchased,
+                //         detail.date_exp,
+                //         detail.price,
+                //         indl_id
+                //     ];
+                const insertQuery = "INSERT INTO ingredient_lot_detail (ind_id, qtypurchased, date_exp, price, indl_id, deleted_at) VALUES (?,?,?,?,?,?)";
+
+                const flattenedineData = insertData.flat();
+                console.log("insertData", insertData)
+                console.log("flattenedineData", flattenedineData)
+
+
+                flattenedineData.forEach(detail => {
+                    const insertValues = [
+                        detail.ind_id,
+                        detail.qtypurchased,
+                        detail.date_exp,
+                        detail.price,
+                        indl_id,
+                        null // กำหนดให้ deleted_at เป็น null
+                    ];
+
+                    connection.query(insertQuery, insertValues, (err, results) => {
+                        if (err) {
+                            console.error("MySQL Insert Query Error:", err);
+                            return res.status(500).json({ message: "error", error: err });
+                        }
+                        if (status == "2" || 2) {
+                            console.log("detail.ind_id", detail.ind_id)
+                            const updateIngredientStockQuery = ` UPDATE ingredient SET ind_stock = ind_stock + ? WHERE ind_id = ?`;
+                            flattenedineData.forEach(detail => {
+                                connection.query(updateIngredientStockQuery, [detail.qtypurchased, detail.ind_id], (err, updateResults) => {
+                                    if (err) {
+                                        console.error("MySQL Error:", err);
+                                    }
+                                });
+                            });
+                        }
+                    });
+                    
+
+                    // if (dataToEdit.status === 2||"2") {
+                    //     // const updateIngredientStock = true;
+                    //     console.log("detail.ind_id", detail.ind_id)
+                    //     const updateIngredientStockQuery = `UPDATE ingredient SET ind_stock = ind_stock + ? WHERE ind_id = ?`;
+                    //     ingredient_lot_detail.forEach(detail => {
+                    //         connection.query(updateIngredientStockQuery, [detail.qtypurchased, detail.ind_id], (err, results) => {
+                    //             if (err) {
+                    //                 console.error("MySQL Error:", err);
+                    //             }
+                    //         });
+                    //     });
+                    // }
+                });
+
+
+            }
+
+            // ตรวจสอบว่ามีข้อมูลที่ต้องการอัปเดตหรือไม่
+            // console.log("updateData",updateData)
+            if (updateData.length > 0) {
+                console.log("database uppp", updateData)
+                // const updateQuery = "UPDATE Ingredient_lot_detail SET qtypurchased = ?, date_exp = ?, price = ? WHERE ind_id = ? AND indl_id = ?";
+                const updateQuery = "UPDATE ingredient_lot_detail SET qtypurchased = ?, date_exp = ?, price = ?, deleted_at = NULL WHERE ind_id = ? AND indl_id = ?";
+                //การใช้ flat() จะช่วยให้คุณได้ array ที่ flatten แล้วที่มี object ภายใน ซึ่งจะทำให้ง่ายต่อการทำงานกับข้อมูลในลำดับถัดไป.
+                const flattenedUpdateData = updateData.flat();
+                console.log("flattenedUpdateData", flattenedUpdateData)
+                flattenedUpdateData.forEach(detail => {
+                    const updateValues = [
+                        detail.qtypurchased,
+                        detail.date_exp,
+                        detail.price,
+                        detail.ind_id,
+                        indl_id
+                    ];
+
+                    connection.query(updateQuery, updateValues, (err, results) => {
+                        if (err) {
+                            console.error("MySQL Update Query Error:", err);
+                            return res.status(500).json({ message: "error", error: err });
+                        }
+                        if (status == "2" || 2) {
+                            console.log("detail.ind_id", detail.ind_id)
+                            const updateIngredientStockQuery = ` UPDATE ingredient SET ind_stock = ind_stock + ? WHERE ind_id = ?`;
+                            flattenedUpdateData.forEach(resultDetail => {
+                                connection.query(updateIngredientStockQuery, [resultDetail.qtypurchased, resultDetail.ind_id], (err, updateResults) => {
+                                    if (err) {
+                                        console.error("MySQL Error:", err);
+                                    }
+                                });
+                            });
+                            
+                        }
+
+                        console.log("Updated data:", results);
+                    });
+                });
+
+            }
+
+            res.status(200).json({ message: "test เงื่อนไข" });
+
         });
-
-        const indIdsNotInIndIdsQ = indIdsQ.filter(id => !indIds.includes(id));
-        console.log(indIdsNotInIndIdsQ)
-
-        if (indIdsNotInIndIdsQ != []) {
-            indIdsNotInIndIdsQ.forEach(detail => {
-                console.log(detail)
-                const indIdsNotInIndIdsQdata = dataToEdit.filter(item => item.ind_id === detail);
-                console.log("Insert data:", indIdsNotInIndIdsQdata);
-                insertData.push(indIdsNotInIndIdsQdata);
-            });
-
-        }
-        console.log(deleteData, insertData, updateData)
-        // indIdsQ.forEach(detail => {
-
-        //     console.log(detail)
-        //     const selectedData = dataToEdit.filter(item => item.ind_id === detail);
-
-        // });
-        console.log("de length", deleteData.length)
-        console.log("in length", insertData.length)
-        console.log("ed length", updateData.length)
-        if (deleteData.length > 0) {
-            // const deleteQuery = "DELETE FROM Ingredient_lot_detail WHERE ind_id = ? AND indl_id = ?";
-            const deleteQuery = "UPDATE ingredient_lot_detail SET deleted_at = CURRENT_TIMESTAMP WHERE ind_id = ? AND indl_id = ?";
-            deleteData.forEach(detail => {
-                const deleteValues = [detail, indl_id];
-                console.log(deleteValues)
-
-                connection.query(deleteQuery, deleteValues, (err, results) => {
-                    if (err) {
-                        console.error("MySQL Delete Query Error:", err);
-                        return res.status(500).json({ message: "error", error: err });
-                    }
-
-                    console.log("Deleted data:", results);
-                });
-            });
-        }
-
-        // ตรวจสอบว่ามีข้อมูลที่ต้องการเพิ่มหรือไม่
-        //ยังไม่ได้
-        if (insertData.length > 0) {
-            console.log("database inn", insertData)
-            console.log("indl id", indl_id)
-            // INSERT INTO Ingredient_lot_detail (ind_id, indl_id, qtypurchased, date_exp, price)
-            //                 VALUES (?, ?, ?, ?, ?)
-
-            // const insertQuery = "INSERT INTO ingredient_lot_detail (ind_id, qtypurchased, date_exp, price, indl_id) VALUES (?,?,?,?,?)";
-
-            // const flattenedineData = insertData.flat();
-
-            // flattenedineData.forEach(detail => {
-            //     const insertValues = [
-            //         detail.ind_id,
-            //         detail.qtypurchased,
-            //         detail.date_exp,
-            //         detail.price,
-            //         indl_id
-            //     ];
-            const insertQuery = "INSERT INTO ingredient_lot_detail (ind_id, qtypurchased, date_exp, price, indl_id, deleted_at) VALUES (?,?,?,?,?,?)";
-
-            const flattenedineData = insertData.flat();
-            console.log("insertData", insertData)
-            console.log("flattenedineData", flattenedineData)
-
-
-            flattenedineData.forEach(detail => {
-                const insertValues = [
-                    detail.ind_id,
-                    detail.qtypurchased,
-                    detail.date_exp,
-                    detail.price,
-                    indl_id,
-                    null // กำหนดให้ deleted_at เป็น null
-                ];
-
-                connection.query(insertQuery, insertValues, (err, results) => {
-                    if (err) {
-                        console.error("MySQL Insert Query Error:", err);
-                        return res.status(500).json({ message: "error", error: err });
-                    }
-
-                    console.log("Inserted data:", results);
-                });
-            });
-
-
-        }
-
-        // ตรวจสอบว่ามีข้อมูลที่ต้องการอัปเดตหรือไม่
-        // console.log("updateData",updateData)
-        if (updateData.length > 0) {
-            console.log("database uppp", updateData)
-            // const updateQuery = "UPDATE Ingredient_lot_detail SET qtypurchased = ?, date_exp = ?, price = ? WHERE ind_id = ? AND indl_id = ?";
-            const updateQuery = "UPDATE ingredient_lot_detail SET qtypurchased = ?, date_exp = ?, price = ?, deleted_at = NULL WHERE ind_id = ? AND indl_id = ?";
-            //การใช้ flat() จะช่วยให้คุณได้ array ที่ flatten แล้วที่มี object ภายใน ซึ่งจะทำให้ง่ายต่อการทำงานกับข้อมูลในลำดับถัดไป.
-            const flattenedUpdateData = updateData.flat();
-            console.log("flattenedUpdateData", flattenedUpdateData)
-            flattenedUpdateData.forEach(detail => {
-                const updateValues = [
-                    detail.qtypurchased,
-                    detail.date_exp,
-                    detail.price,
-                    detail.ind_id,
-                    indl_id
-                ];
-
-                connection.query(updateQuery, updateValues, (err, results) => {
-                    if (err) {
-                        console.error("MySQL Update Query Error:", err);
-                        return res.status(500).json({ message: "error", error: err });
-                    }
-
-                    console.log("Updated data:", results);
-                });
-            });
-
-        }
-
-        res.status(200).json({ message: "test เงื่อนไข" });
-
-    });
+    })
 });
 
 
 // วัตถุดิบใช้ no production
 
 //กลับมาดักกรณีไม่มีข้อมูล detail ห้ามเพิ่ม
+// router.post('/addUseIngrediantnew', (req, res, next) => {
+//     // const ingredient_lot = req.body;
+//     // const ingredient_lot_detail = req.body;
+//     const ingredient_Used = req.body.ingredient_Used;
+//     const ingredient_Used_detail = req.body.ingredient_Used_detail;
+
+
+//     const query = "INSERT INTO ingredient_Used (status,note) VALUES (?,?)";
+//     connection.query(query, [ingredient_Used.status, ingredient_Used.note], (err, results) => {
+//         if (!err) {
+//             const indU_id = results.insertId;
+
+//             const values = ingredient_Used_detail.map(detail => [
+//                 indU_id,
+//                 detail.ind_id,
+//                 detail.qty_used_sum,
+//                 detail.scrap,
+//                 null // กำหนดให้ deleted_at เป็น null
+//             ]);
+
+//             const detailQuery = `
+//                 INSERT INTO ingredient_Used_detail (indU_id, ind_id, qty_used_sum, scrap, deleted_at) 
+//                 VALUES ?
+//             `;
+
+//             connection.query(detailQuery, [values], (err, results) => {
+//                 if (err) {
+//                     console.error("MySQL Error:", err);
+//                     return res.status(500).json({ message: "error", error: err });
+//                 } else {
+//                     return res.status(200).json({ message: "success", indU_id, results });
+//                 }
+//             });
+//         } else {
+//             console.error("MySQL Error:", err);
+//             return res.status(500).json({ message: "error", error: err });
+//         }
+//     });
+// });
+//ให้เลือกจาก exp
+// router.post('/addUseIngrediantnew', (req, res, next) => {
+//     const ingredient_Used = req.body.ingredient_Used;
+//     const ingredient_Used_detail = req.body.ingredient_Used_detail;
+
+//     const query = "INSERT INTO ingredient_Used (status, note) VALUES (?, ?)";
+//     connection.query(query, [ingredient_Used.status, ingredient_Used.note], (err, results) => {
+//         if (!err) {
+//             const indU_id = results.insertId;
+
+//             // Fetching indlde_id from ingredient_lot_detail based on ind_id and nearest date_exp
+//             const promises = ingredient_Used_detail.map(detail => {
+//                 return new Promise((resolve, reject) => {
+//                     const selectQuery = `
+//                         SELECT indlde_id,qty_stock
+//                         FROM ingredient_lot_detail 
+//                         WHERE ind_id = ? AND date_exp > NOW() 
+//                         ORDER BY ABS(TIMESTAMPDIFF(SECOND, NOW(), date_exp)) 
+//                         LIMIT 1
+//                     `;
+//                     connection.query(selectQuery, [detail.ind_id], (err, rows) => {
+//                         if (err) {
+//                             reject(err);
+//                         } else {
+//                             if (rows.length > 0) {
+//                                 resolve(rows[0].indlde_id);
+//                             } else {
+//                                 reject("No matching record found for ind_id: " + detail.ind_id);
+//                             }
+//                         }
+//                     });
+//                 });
+//             });
+
+//             Promise.all(promises)
+//                 .then(indlde_ids => {
+//                     const values = ingredient_Used_detail.map((detail, index) => [
+//                         indU_id,
+//                         indlde_ids[index], // Use the fetched indlde_id
+//                         detail.qty_used_sum,
+//                         detail.scrap,
+//                         null // Set deleted_at to null
+//                     ]);
+
+//                     const detailQuery = `
+//                         INSERT INTO ingredient_Used_detail (indU_id, indlde_id , qty_used_sum, scrap, deleted_at) 
+//                         VALUES ?
+//                     `;
+
+//                     connection.query(detailQuery, [values], (err, results) => {
+//                         if (err) {
+//                             console.error("MySQL Error:", err);
+//                             return res.status(500).json({ message: "error", error: err });
+//                         } else {
+//                             return res.status(200).json({ message: "success", indU_id, results });
+//                         }
+//                     });
+//                 })
+//                 .catch(error => {
+//                     console.error("MySQL Error:", error);
+//                     return res.status(500).json({ message: "error", error: error });
+//                 });
+//         } else {
+//             console.error("MySQL Error:", err);
+//             return res.status(500).json({ message: "error", error: err });
+//         }
+//     });
+// });
+//เพิ่มเรื่องคำนวน ปริมาณแล้วหัก หมดละไม่หักใหม่
+// router.post('/addUseIngrediantnew', (req, res, next) => {
+//     const ingredient_Used = req.body.ingredient_Used;
+//     const ingredient_Used_detail = req.body.ingredient_Used_detail;
+
+//     const query = "INSERT INTO ingredient_Used (status, note) VALUES (?, ?)";
+//     connection.query(query, [ingredient_Used.status, ingredient_Used.note], (err, results) => {
+//         if (!err) {
+//             const indU_id = results.insertId;
+
+//             // Fetching indlde_id and calculating quantity used from ingredient_lot_detail based on ind_id and nearest date_exp
+//             const promises = ingredient_Used_detail.map(detail => {
+//                 return new Promise((resolve, reject) => {
+//                     const selectQuery = `
+//                     SELECT indlde_id, qty_stock, qty_per_unit
+//                     FROM ingredient_lot_detail 
+//                     JOIN ingredient ON ingredient_lot_detail.ind_id = ingredient.ind_id
+//                     WHERE ingredient_lot_detail.ind_id = ? AND ingredient_lot_detail.date_exp > NOW() 
+//                     ORDER BY 
+//                         CASE 
+//                             WHEN qty_stock > 0 THEN 0  -- สำหรับ indlde_id ที่มี qty_stock มากกว่าศูนย์ ให้เรียงลำดับแบบเดิม
+//                             ELSE 1                      -- สำหรับ indlde_id ที่ qty_stock = 0 ให้เรียงลำดับไปยังด้านล่าง
+//                         END,
+//                         ABS(TIMESTAMPDIFF(SECOND, NOW(), ingredient_lot_detail.date_exp))
+//                     LIMIT 1`;
+
+
+//                     connection.query(selectQuery, [detail.ind_id], (err, rows) => {
+//                         console.log(rows[0],rows[1])
+//                         if (err) {
+//                             reject(err);
+//                         } else {
+//                             if (rows.length > 0) {
+//                                 const indlde_id = rows[0].indlde_id;
+//                                 const qty_per_unit = rows[0].qty_per_unit;
+//                                 const qty_used_sum = detail.qty_used_sum;
+//                                 const scrap = detail.scrap;
+//                                 const total_quantity_used = qty_used_sum * qty_per_unit + scrap;
+//                                 const qty_stock = rows[0].qty_stock;
+
+//                                 console.log(qty_stock,"qty_stock")
+//                                 console.log(total_quantity_used,"total_quantity_used")
+
+//                                 const new_qty_stock = qty_stock - total_quantity_used;
+//                                 console.log(new_qty_stock,"new_qty_stock")
+
+//                                 if (qty_stock < total_quantity_used) {
+
+//                                     reject("Not enough stock for ind_id: " + detail.ind_id);
+//                                 } else {
+//                                     // Update qty_stock in ingredient_lot_detail
+//                                     const updateStockQuery = `
+//                                         UPDATE ingredient_lot_detail 
+//                                         SET qty_stock = ? 
+//                                         WHERE indlde_id = ?
+//                                     `;
+//                                     console.log(new_qty_stock)
+//                                     console.log(total_quantity_used)
+
+//                                     connection.query(updateStockQuery, [new_qty_stock, indlde_id], (err, updateResult) => {
+//                                         if (err) {
+//                                             reject(err);
+//                                         } else {
+//                                             resolve(indlde_id);
+//                                         }
+//                                     });
+//                                 }
+//                             } else {
+//                                 reject("No matching record found for ind_id: " + detail.ind_id);
+//                             }
+//                         }
+//                     });
+//                 });
+//             });
+
+//             Promise.all(promises)
+//                 .then(indlde_ids => {
+//                     const values = ingredient_Used_detail.map((detail, index) => [
+//                         indU_id,
+//                         indlde_ids[index], // Use the fetched indlde_id
+//                         detail.qty_used_sum,
+//                         detail.scrap,
+//                         null // Set deleted_at to null
+//                     ]);
+
+//                     const detailQuery = `
+//                         INSERT INTO ingredient_Used_detail (indU_id, indlde_id , qty_used_sum, scrap, deleted_at) 
+//                         VALUES ?
+//                     `;
+
+//                     connection.query(detailQuery, [values], (err, results) => {
+//                         if (err) {
+//                             console.error("MySQL Error:", err);
+//                             return res.status(500).json({ message: "error", error: err });
+//                         } else {
+//                             return res.status(200).json({ message: "success", indU_id, results });
+//                         }
+//                     });
+//                 })
+//                 .catch(error => {
+//                     console.error("MySQL Error:", error);
+//                     return res.status(500).json({ message: "error", error: error });
+//                 });
+//         } else {
+//             console.error("MySQL Error:", err);
+//             return res.status(500).json({ message: "error", error: err });
+//         }
+//     });
+// });
+//ลองหมดละหักใหม่
+// router.post('/addUseIngrediantnew', (req, res, next) => {
+//     const ingredient_Used = req.body.ingredient_Used;
+//     const ingredient_Used_detail = req.body.ingredient_Used_detail;
+
+//     const query = "INSERT INTO ingredient_Used (status, note) VALUES (?, ?)";
+//     connection.query(query, [ingredient_Used.status, ingredient_Used.note], (err, results) => {
+//         if (!err) {
+//             const indU_id = results.insertId;
+
+//             // Fetching indlde_id and calculating quantity used from ingredient_lot_detail based on ind_id and nearest date_exp
+//             const promises = ingredient_Used_detail.map(detail => {
+//                 return new Promise((resolve, reject) => {
+//                     const selectQuery = `
+//                         SELECT indlde_id, qty_stock, qty_per_unit
+//                         FROM ingredient_lot_detail 
+//                         JOIN ingredient ON ingredient_lot_detail.ind_id = ingredient.ind_id
+//                         WHERE ingredient_lot_detail.ind_id = ? AND ingredient_lot_detail.date_exp > NOW() 
+//                         ORDER BY ABS(TIMESTAMPDIFF(SECOND, NOW(), ingredient_lot_detail.date_exp)) 
+//                         LIMIT 1
+//                     `;
+//                     connection.query(selectQuery, [detail.ind_id], (err, rows) => {
+//                         if (err) {
+//                             reject(err);
+//                         } else {
+//                             if (rows.length > 0) {
+//                                 const indlde_id = rows[0].indlde_id;
+//                                 const qty_per_unit = rows[0].qty_per_unit;
+//                                 const qty_used_sum = detail.qty_used_sum;
+//                                 const scrap = detail.scrap;
+//                                 const total_quantity_used = qty_used_sum * qty_per_unit + scrap;
+//                                 const qty_stock = rows[0].qty_stock;
+
+//                                 console.log(qty_stock,"qty_stock")
+//                                 console.log(total_quantity_used,"total_quantity_used")
+
+//                                 const new_qty_stock = qty_stock - total_quantity_used;
+//                                 console.log(new_qty_stock,"new_qty_stock")
+
+//                                 if (qty_stock < total_quantity_used) {
+//                                     reject("Not enough stock for ind_id: " + detail.ind_id);
+//                                 } else {
+//                                     // Update qty_stock in ingredient_lot_detail
+//                                     const updateStockQuery = `
+//                                         UPDATE ingredient_lot_detail 
+//                                         SET qty_stock = ? 
+//                                         WHERE indlde_id = ?
+//                                     `;
+
+//                                     connection.query(updateStockQuery, [new_qty_stock, indlde_id], (err, updateResult) => {
+//                                         if (err) {
+//                                             reject(err);
+//                                         } else {
+//                                             // Add the quantity used sum to the detail object
+//                                             detail.qty_used_sum = total_quantity_used;
+
+//                                             resolve(indlde_id);
+//                                         }
+//                                     });
+//                                 }
+//                             } else {
+//                                 reject("No matching record found for ind_id: " + detail.ind_id);
+//                             }
+//                         }
+//                     });
+//                 });
+//             });
+
+//             Promise.all(promises)
+//                 .then(indlde_ids => {
+//                     const values = ingredient_Used_detail.map((detail, index) => [
+//                         indU_id,
+//                         indlde_ids[index], // Use the fetched indlde_id
+//                         detail.qty_used_sum, // Use the updated qty_used_sum
+//                         detail.scrap,
+//                         null // Set deleted_at to null
+//                     ]);
+
+//                     const detailQuery = `
+//                         INSERT INTO ingredient_Used_detail (indU_id, indlde_id , qty_used_sum, scrap, deleted_at) 
+//                         VALUES ?
+//                     `;
+
+//                     connection.query(detailQuery, [values], (err, results) => {
+//                         if (err) {
+//                             console.error("MySQL Error:", err);
+//                             return res.status(500).json({ message: "error", error: err });
+//                         } else {
+//                             return res.status(200).json({ message: "success", indU_id, results });
+//                         }
+//                     });
+//                 })
+//                 .catch(error => {
+//                     console.error("MySQL Error:", error);
+//                     return res.status(500).json({ message: "error", error: error });
+//                 });
+//         } else {
+//             console.error("MySQL Error:", err);
+//             return res.status(500).json({ message: "error", error: err });
+//         }
+//     });
+// });
+
+
+
+
+// ลองเอง
 router.post('/addUseIngrediantnew', (req, res, next) => {
-    // const ingredient_lot = req.body;
-    // const ingredient_lot_detail = req.body;
     const ingredient_Used = req.body.ingredient_Used;
     const ingredient_Used_detail = req.body.ingredient_Used_detail;
 
-
-    const query = "INSERT INTO ingredient_Used (status,note) VALUES (?,?)";
+    const query = "INSERT INTO ingredient_Used (status, note) VALUES (?, ?)";
     connection.query(query, [ingredient_Used.status, ingredient_Used.note], (err, results) => {
         if (!err) {
             const indU_id = results.insertId;
+            ingredient_Used_detail.forEach((detail, index) => {
+                // const ind_id = detail.ind_id;
+                // const qty_used_sum = detail.qty_used_sum;
+                // const scrap = detail.scrap;
 
-            const values = ingredient_Used_detail.map(detail => [
-                indU_id,
-                detail.ind_id,
-                detail.qty_used_sum,
-                detail.scrap,
-                null // กำหนดให้ deleted_at เป็น null
-            ]);
+                const query = `
+                     SELECT indlde_id, qty_stock, qty_per_unit
+                     FROM ingredient
+                     JOIN ingredient_lot_detail ON ingredient_lot_detail.ind_id = ingredient.ind_id
+                     JOIN ingredient_lot ON ingredient_lot.indl_id = ingredient_lot_detail.indl_id
+                     WHERE ingredient_lot_detail.ind_id = ? AND ingredient_lot_detail.date_exp > NOW() and qty_stock > 0 and ingredient_lot.status="2"
+                     ORDER BY ingredient_lot_detail.date_exp ASC;`;
 
-            const detailQuery = `
-                INSERT INTO ingredient_Used_detail (indU_id, ind_id, qty_used_sum, scrap, deleted_at) 
-                VALUES ?
-            `;
+                connection.query(query, [detail.ind_id], (err, results) => {
+                    if (err) {
+                        console.error("MySQL Query Error:", err);
+                        // handle error
+                    }
+                    let indlde_id = [];
+                    const detailall = [];
+                    const upind = []
 
-            connection.query(detailQuery, [values], (err, results) => {
-                if (err) {
-                    console.error("MySQL Error:", err);
-                    return res.status(500).json({ message: "error", error: err });
-                } else {
-                    return res.status(200).json({ message: "success", indU_id, results });
-                }
+                    // วน loop ผ่านทุกๆ แถวของผลลัพธ์
+                    let stopLoop = false; // สร้างตัวแปรเพื่อสำหรับบอกว่าควรหยุดลูปหรือไม่
+                    let new_qty_stock = 1; // สร้างตัวแปร new_qty_stock เพื่อให้สามารถเข้าถึงได้จากทั้งสองลูป
+                    //เช็คเงื่อนไขดีๆ อาจจะะให้เปลี่ยนไปมา stopLoop = false;
+                    results.forEach(result => {
+                        if (!stopLoop) { // ตรวจสอบว่ายังไม่ควรหยุดลูป
+                            if (new_qty_stock > 0) {
+                                const qty_per_unit = result.qty_per_unit;
+                                const qty_used_sum = detail.qty_used_sum;
+                                const scrap = detail.scrap;
+                                const total_quantity_used = qty_used_sum * qty_per_unit + scrap; // ทำให้ qty_stock เป็นค่าบวก
+                                const qty_stock = result.qty_stock;
+
+                                console.log(total_quantity_used, "total_quantity_used",);
+                                console.log(qty_stock, "qty_stock");
+
+                                new_qty_stock = qty_stock - total_quantity_used;
+                                console.log(new_qty_stock, "new_qty_stock>0");
+
+                                if (new_qty_stock < 0) {
+                                    const new_qty_stockup = total_quantity_used + new_qty_stock
+
+                                    const itemIn = {
+                                        indU_id: indU_id, // ใช้ค่าจากตัวแปรนอกลูป
+                                        indlde_id: result.indlde_id, // ใช้ค่าจากการ query
+                                        qty_used_sum: detail.qty_used_sum, // ใช้ค่าจากตัวแปรนอกลูป
+                                        scrap: detail.scrap, // ใช้ค่าจากตัวแปรนอกลูป
+                                        qtyusesum: new_qty_stockup, // ใช้ค่าที่คำนวณได้
+                                        deleted_at: null // ใช้ค่าที่คำนวณได้
+                                    };
+                                    // เพิ่มอ็อบเจ็กต์ลงในอาร์เรย์
+                                    detailall.push(itemIn);
+
+                                    if (ingredient_Used.status == "2") {
+
+                                        const itemUp = {
+                                            indlde_id: result.indlde_id,
+                                            qty_stock: 0 // ใช้ค่าจากการ query
+                                        };
+                                        upind.push(itemUp);
+                                    }
+                                } else {
+                                    const itemIn = {
+                                        indU_id: indU_id, // ใช้ค่าจากตัวแปรนอกลูป
+                                        indlde_id: result.indlde_id, // ใช้ค่าจากการ query
+                                        qty_used_sum: detail.qty_used_sum, // ใช้ค่าจากตัวแปรนอกลูป
+                                        scrap: detail.scrap, // ใช้ค่าจากตัวแปรนอกลูป
+                                        qtyusesum: total_quantity_used, // ใช้ค่าที่คำนวณได้
+                                        deleted_at: null // ใช้ค่าที่คำนวณได้
+                                    };
+                                    detailall.push(itemIn);
+
+                                    if (ingredient_Used.status == "2") {
+
+                                        const itemUp = {
+                                            indlde_id: result.indlde_id,
+                                            qty_stock: new_qty_stock, // ใช้ค่าจากการ query
+
+                                        };
+                                        upind.push(itemUp);
+                                    }
+                                    stopLoop = true;
+
+                                }
+
+                            }
+
+                            // ตรวจสอบว่า new_qty_stock เป็น 0 หรือไม่ ถ้าเป็นให้หยุดลูป
+                            else if (new_qty_stock < 0) {
+                                console.log(new_qty_stock, "new_qty_stock<0")
+                                console.log(result.qty_stock, "result.qty_stock<0")
+
+                                newqtystockforup = result.qty_stock + new_qty_stock;
+                                // console
+                                new_qty_stock = Math.abs(new_qty_stock);
+
+                                const itemIn = {
+                                    indU_id: indU_id, // ใช้ค่าจากตัวแปรนอกลูป
+                                    indlde_id: result.indlde_id, // ใช้ค่าจากการ query
+                                    qty_used_sum: detail.qty_used_sum, // ใช้ค่าจากตัวแปรนอกลูป
+                                    scrap: detail.scrap, // ใช้ค่าจากตัวแปรนอกลูป
+                                    qtyusesum: new_qty_stock, // ใช้ค่าที่คำนวณได้
+                                    deleted_at: null // ใช้ค่าที่คำนวณได้
+                                };
+                                // เพิ่มอ็อบเจ็กต์ลงในอาร์เรย์
+                                detailall.push(itemIn);
+
+                                // stopLoop = true; // ตั้งค่าให้หยุดลูป
+                                console.log(new_qty_stock, "new_qty_stock<0")
+                                if (ingredient_Used.status == "2") {
+
+                                    const itemUp = {
+                                        indlde_id: result.indlde_id,
+                                        qty_stock: newqtystockforup, // ใช้ค่าจากการ query
+
+                                    };
+                                    upind.push(itemUp);
+                                }
+
+
+
+                            } else {
+                                stopLoop = true;
+                            }
+
+                        }
+                    });
+
+                    console.log(detailall, "detailall")
+                    console.log(upind, "upind")
+                    //เหลือใส่ DB
+                    if (detailall.length > 0) {
+                        const insertDetailQuery = "INSERT INTO ingredient_Used_detail (indU_id, indlde_id, qty_used_sum, scrap, qtyusesum, deleted_at) VALUES ?";
+                        const detailValues = detailall.map(item => [item.indU_id, item.indlde_id, item.qty_used_sum, item.scrap, item.qtyusesum, item.deleted_at]);
+
+                        connection.query(insertDetailQuery, [detailValues], (err, result) => {
+                            if (err) {
+                                console.error("Error inserting detail data:", err);
+                                // Handle error
+                            } else {
+                                console.log("Detail data inserted successfully");
+                                // Proceed with other operations or respond to the client
+                            }
+                        });
+
+                    }
+                    if (ingredient_Used.status == "2" || 2) {
+
+                        if (upind.length > 0) {
+
+                            const updateQuery = " UPDATE ingredient_lot_detail SET qty_stock = ? WHERE indlde_id = ?";
+                            // const detailValues = upind.map(item => [item.qty_stock, item.indlde_id]);
+                            // const flattenedUpdateData = upind.flat();
+
+                            upind.forEach(item => {
+                                const updateValues = [item.qty_stock, item.indlde_id]
+
+
+                                connection.query(updateQuery, updateValues, (err, results) => {
+                                    if (err) {
+                                        console.error("MySQL Update Query Error:", err);
+                                        return res.status(500).json({ message: "error", error: err });
+                                    }
+
+                                    console.log("Updated data:", results);
+                                });
+                            });
+
+                        }
+                    }
+
+                })
+
             });
+            if (!err) {
+                res.status(200).json({ message: "success" });
+            }
+
+
+
+
         } else {
             console.error("MySQL Error:", err);
             return res.status(500).json({ message: "error", error: err });
         }
     });
 });
+
+//สถานะ = 2 ยืนยันแล้ว
+
 
 
 

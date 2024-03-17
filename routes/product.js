@@ -878,12 +878,13 @@ router.get('/products/:pd_id', async (req, res) => {
 router.get('/pdset/:pd_id', async (req, res, next) => {
     const pd_id = Number(req.params.pd_id);
     try {
-        var query = `SELECT pd.* , rc.* ,rcd.*,ind.ind_name as ind_name, pdc.pdc_name as pdc_name
+        var query = `SELECT pd.* , rc.*, u.un_name as un_name  ,rcd.*,ind.ind_name as ind_name, pdc.pdc_name as pdc_name
         FROM productCategory pdc
         JOIN products pd ON pdc.pdc_id = pd.pdc_id
         JOIN recipe rc ON rc.pd_id = pd.pd_id
         JOIN recipedetail rcd ON rcd.rc_id = rc.rc_id
         JOIN ingredient ind ON ind.ind_id = rcd.ind_id
+        JOIN unit u ON rc.un_id = u.un_id
         WHERE pd.pd_id = ?`;
 
         connection.query(query, pd_id, (err, results) => {
@@ -909,6 +910,7 @@ router.get('/pdset/:pd_id', async (req, res, next) => {
                     created_at: filteredResults[0].created_at,
                     updated_at: filteredResults[0].updated_at,
                     rc_id: filteredResults[0].rc_id,
+                    un_name: filteredResults[0].un_name,
                     qtylifetime: filteredResults[0].qtylifetime,
                     produced_qty: filteredResults[0].produced_qty,
 

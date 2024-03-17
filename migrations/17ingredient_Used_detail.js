@@ -21,13 +21,16 @@ module.exports = {
                 allowNull: false,
                 references: {
                     model: 'ingredient_lot_detail',
-                    key: 'ind_id'
+                    key: 'indlde_id'
                 }
             },
             qty_used_sum: {
                 type: Sequelize.INTEGER
             },
             scrap: {
+                type: Sequelize.INTEGER
+            },
+            qtyusesum: {
                 type: Sequelize.INTEGER
             },
             created_at: {

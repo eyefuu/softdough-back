@@ -101,6 +101,19 @@ router.get('/sm/:sm_id', (req, res, next) => {
     });
 })
 
+router.get('/smt/:id', (req, res, next) => {
+    const smt_id = Number(req.params.id);
+
+    var query = `select *from salesmenuType where smt_id=?`
+    connection.query(query, smt_id, (err, results) => {
+        if (!err) {
+            return res.status(200).json(results);
+        } else {
+            return res.status(500).json(err);
+        }
+    });
+})
+
 // จัดคร่าวๆ
 // router.get('/smset/:sm_id', async (req, res, next) => {
 //     const sm_id = Number(req.params.sm_id);
@@ -246,7 +259,7 @@ router.get('/small', async (req, res, next) => {
 //ดักที่เป็น type ด้วย จำนวนต่อกล่อง รวมกันต้อง=ที่กำหนดไว้พอดี
 //rollback ตรง detail มีปัญหา กับ json ได้ tsx ไม่ได้ มีสำรองด้านใน บรรทัดเปลี่ยน detail
 router.post('/addsm', upload.single('picture'), async (req, res) => {
-    const { sm_name, smt_id, sm_price, fix } = req.body;
+    const { sm_name, smt_id, sm_price, status, fix } = req.body;
     const salesmenudetail = req.body.salesmenudetail;
 
     const imageBuffer = req.file && req.file.buffer ? req.file.buffer : null;
@@ -266,7 +279,7 @@ router.post('/addsm', upload.single('picture'), async (req, res) => {
             imageBase64 = resizedImageBuffer.toString('base64');
         }
 
-        const salesmenuWithPicture = { sm_name, smt_id, sm_price, fix, picture: imageBase64 };
+        const salesmenuWithPicture = { sm_name, smt_id, sm_price,status, fix, picture: imageBase64 };
 
         connection.beginTransaction((err) => {
             if (err) {
@@ -298,7 +311,7 @@ router.post('/addsm', upload.single('picture'), async (req, res) => {
                 console.log(salesmenudetailar)
 
                 if (salesmenudetailar && Array.isArray(salesmenudetailar)) {
-                    if (fix === "1") {
+                    if (fix === "1"||1) {
                         const salesmenudetail1 = salesmenudetailar.map(detail => [salesmenuId, detail.pd_id, detail.qty, null]);
                         const salesmenudetailQuery = `INSERT INTO salesMenudetail (sm_id, pd_id, qty,deleted_at) VALUES ?`;
                         connection.query(salesmenudetailQuery, [salesmenudetail1], (err, detailResults) => {
@@ -316,7 +329,7 @@ router.post('/addsm', upload.single('picture'), async (req, res) => {
                             }
 
                         });
-                    } else if (fix === "2") {
+                    } else if (fix === "2"||2) {
                         const salesmenudetailWithNullQty = salesmenudetailar.map(detail => [salesmenuId, detail.pd_id, null, null]); // กำหนดค่า qty เป็น null ในแต่ละรายการ
                         const salesmenudetailQuery = `INSERT INTO salesMenudetail (sm_id, pd_id, qty,deleted_at) VALUES ?`;
                         connection.query(salesmenudetailQuery, [salesmenudetailWithNullQty], (err, detailResults) => {

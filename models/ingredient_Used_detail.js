@@ -12,6 +12,7 @@ module.exports = (sequelize, DataTypes) => {
         indlde_id: DataTypes.INTEGER,
         qty_used_sum: DataTypes.INTEGER,
         scrap: DataTypes.INTEGER,
+        qtyusesum: DataTypes.INTEGER,
 
     }, {
         sequelize,
