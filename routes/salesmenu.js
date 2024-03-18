@@ -6,8 +6,10 @@ const multer = require('multer');
 const upload = multer();
 const sharp = require('sharp');
 
+const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder ,isAdminUserOrder} = require('../middleware')
 
-router.get('/unit', (req, res, next) => {
+
+router.get('/unit', isAdminUserOrder,(req, res, next) => {
     var query = 'select *from unit where type="2"'
     connection.query(query, (err, results) => {
         if (!err) {
@@ -18,7 +20,7 @@ router.get('/unit', (req, res, next) => {
     });
 })
 
-router.post('/addtype', (req, res, next) => {
+router.post('/addtype',isAdmin, (req, res, next) => {
     let type = req.body;
     query = "insert into salesMenuType (smt_name,un_id,qty_per_unit) values(?,?,?)";
     connection.query(query, [type.smt_name, type.un_id, type.qty_per_unit], (err, results) => {
@@ -31,7 +33,7 @@ router.post('/addtype', (req, res, next) => {
     });
 })
 
-router.get('/readsmt', (req, res, next) => {
+router.get('/readsmt',isAdminUserOrder, (req, res, next) => {
     var query = 'select *from salesmenuType'
     connection.query(query, (err, results) => {
         if (!err) {
@@ -42,11 +44,11 @@ router.get('/readsmt', (req, res, next) => {
     });
 })
 
-router.patch('/updatesmt/:smt_id', (req, res, next) => {
+router.patch('/updatesmt/:smt_id',isAdmin, (req, res, next) => {
     const smt_id = req.params.smt_id;
     const sm = req.body;
-    var query = "UPDATE salesmenuType SET smt_name=? WHERE smt_id=?";
-    connection.query(query, [sm.smt_name, smt_id], (err, results) => {
+    var query = "UPDATE salesmenuType SET smt_name=?,un_id=?,qty_per_unit=? WHERE smt_id=?";
+    connection.query(query, [sm.smt_name,sm.un_id,sm.qty_per_unit, smt_id], (err, results) => {
         if (!err) {
             if (results.affectedRows === 0) {
                 console.error(err);
@@ -84,7 +86,7 @@ router.patch('/updatesmt/:smt_id', (req, res, next) => {
 // })
 
 //read sm ข้อมูลโชว์หมดไม่ได้จัด
-router.get('/sm/:sm_id', (req, res, next) => {
+router.get('/sm/:sm_id', isAdminUserOrder,(req, res, next) => {
     const sm_id = Number(req.params.sm_id);
 
     var query = `SELECT sm.*, smt.*, smd.* 
@@ -164,7 +166,7 @@ router.get('/smt/:id', (req, res, next) => {
 //     }
 // });
 //เพิ่มเรื่อง delete ไม่โชว์
-router.get('/smset/:sm_id', async (req, res, next) => {
+router.get('/smset/:sm_id',isAdminUserOrder, async (req, res, next) => {
     const sm_id = Number(req.params.sm_id);
     try {
         var query = `SELECT sm.*, smt.*, smd.* 
@@ -222,7 +224,7 @@ router.get('/smset/:sm_id', async (req, res, next) => {
 
 
 //resd sm all
-router.get('/small', async (req, res, next) => {
+router.get('/small',isAdminUserOrder, async (req, res, next) => {
     try {
         var query = `SELECT sm.* , smt.smt_name
             FROM salesMenuType smt 
@@ -258,7 +260,7 @@ router.get('/small', async (req, res, next) => {
 
 //ดักที่เป็น type ด้วย จำนวนต่อกล่อง รวมกันต้อง=ที่กำหนดไว้พอดี
 //rollback ตรง detail มีปัญหา กับ json ได้ tsx ไม่ได้ มีสำรองด้านใน บรรทัดเปลี่ยน detail
-router.post('/addsm', upload.single('picture'), async (req, res) => {
+router.post('/addsm', isAdmin,upload.single('picture'), async (req, res) => {
     const { sm_name, smt_id, sm_price, status, fix } = req.body;
     const salesmenudetail = req.body.salesmenudetail;
 
@@ -398,7 +400,7 @@ router.post('/addsm', upload.single('picture'), async (req, res) => {
 
 //edit กรณี insert กับิ edit มีปหใ roolback ก็งงๆ
 //ได้ละจ้า ชั้นโง่เอง
-router.patch('/editsm/:sm_id', upload.single('picture'), async (req, res) => {
+router.patch('/editsm/:sm_id', upload.single('picture'),isAdmin, async (req, res) => {
     const sm_id = req.params.sm_id;
 
     const { sm_name, smt_id, sm_price, fix, salesmenudetail } = req.body;

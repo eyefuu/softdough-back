@@ -7,8 +7,11 @@ const multer = require('multer');
 const router = express.Router();
 const upload = multer();
 
+const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder ,isAdminUserOrder} = require('../middleware')
 
-router.post('/addcat', (req, res, next) => {
+
+
+router.post('/addcat', isAdmin,(req, res, next) => {
     let cat = req.body;
     query = "insert into productCategory (pdc_name) values(?)";
     connection.query(query, [cat.pdc_name], (err, results) => {
@@ -33,7 +36,7 @@ router.get('/readcat', (req, res, next) => {
 })
 
 
-router.patch('/updatecat/:pdc_id', (req, res, next) => {
+router.patch('/updatecat/:pdc_id', isAdmin,(req, res, next) => {
     const pdc_id = req.params.pdc_id;
     const sm = req.body;
     var query = "UPDATE productCategory SET pdc_name=? WHERE pdc_id=?";
@@ -595,7 +598,7 @@ const sharp = require('sharp');
 
 //+recipe 
 //ถ้าจะมีปห น่าจะมีแค่พวก detail ที่ส่งเป็นลิสท์ จาห tsx
-router.post('/addProductWithRecipe', upload.single('picture'), async (req, res) => {
+router.post('/addProductWithRecipe', upload.single('picture'), isAdmin,async (req, res) => {
     const { pd_name, pd_qtyminimum, status, pdc_id, recipe, recipedetail } = req.body;
     const imageBuffer = req.file && req.file.buffer ? req.file.buffer : null;
 
@@ -842,7 +845,7 @@ router.post('/addProductWithRecipe', upload.single('picture'), async (req, res) 
 
 //read
 
-router.get('/products/:pd_id', async (req, res) => {
+router.get('/products/:pd_id', isAdminUserOrder,async (req, res) => {
     const productId = req.params.pd_id;
 
     try {
@@ -875,7 +878,7 @@ router.get('/products/:pd_id', async (req, res) => {
     }
 });
 
-router.get('/pdset/:pd_id', async (req, res, next) => {
+router.get('/pdset/:pd_id',isAdminUserOrder, async (req, res, next) => {
     const pd_id = Number(req.params.pd_id);
     try {
         var query = `SELECT pd.* , rc.*, u.un_name as un_name  ,rcd.*,ind.ind_name as ind_name, pdc.pdc_name as pdc_name
@@ -940,7 +943,7 @@ router.get('/pdset/:pd_id', async (req, res, next) => {
     }
 });
 
-router.get('/productsall', async (req, res, next) => {
+router.get('/productsall', isAdminUserOrder,async (req, res, next) => {
     try {
         var query = `SELECT pd.* , rc.* 
             FROM products pd 
@@ -1160,7 +1163,7 @@ router.get('/productsall', async (req, res, next) => {
 // });
 //ลอง เงื่อนไข ยังมีปัญหากรณีทั้งแอด ลบ อัปเดต ใน req เดียว
 // ได้แยะ
-router.patch('/editProductWithRecipe/:pd_id', upload.single('picture'), async (req, res) => {
+router.patch('/editProductWithRecipe/:pd_id', isAdmin,upload.single('picture'), async (req, res) => {
     const pd_id = req.params.pd_id;
 
     const { pd_name, pd_qtyminimum, status, pdc_id, recipe, recipedetail } = req.body;
