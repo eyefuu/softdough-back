@@ -5,7 +5,7 @@ const { isALL, ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder
 
 // ------------------------------------------วัตถุดิบ-----------------------------------------
 //เพิ่มวัตถุดิบ
-router.post('/add', isAdmin, (req, res, next) => {
+router.post('/add',(req, res, next) => {
     let ingredientData = req.body;
     let ind_stock = 0; // ตั้งค่าเริ่มต้นเป็น 0
 
@@ -37,7 +37,7 @@ router.post('/add', isAdmin, (req, res, next) => {
 });
 
 //อ่านวัตถุดิบทั้งหมด
-router.get('/read', isAdminUserOrder, (req, res, next) => {
+router.get('/read',  (req, res, next) => {
     var query = `
     SELECT ingredient.*, 
            unit1.un_name AS un_purchased_name,
@@ -77,7 +77,7 @@ router.get('/read', isAdminUserOrder, (req, res, next) => {
 
 
 // อ่านวัตถุดิบที่เลือก
-router.get('/read/:id', isAdminUserOrder, (req, res, next) => {
+router.get('/read/:id',  (req, res, next) => {
     const ind_id = req.params.id;
     var query = `
     SELECT ingredient.*, 
@@ -104,7 +104,7 @@ WHERE ingredient.ind_id = ?;  -- Fixed the alias here
 
 //หน่วยวัตถุดิบ
 // ให้มีtype of unit
-router.get('/unit', isALL, (req, res, next) => {
+router.get('/unit',(req, res, next) => {
     var query = 'select *from unit where type="1"'
     connection.query(query, (err, results) => {
         if (!err) {
@@ -132,7 +132,7 @@ router.get('/unit', isALL, (req, res, next) => {
 // })
 
 // แก้ไขวัตถุดิบ
-router.patch('/update/:id', isAdmin, (req, res, next) => {
+router.patch('/update/:id',  (req, res, next) => {
     const ingredientId = req.params.id;
     const ingredientData = req.body;
     // const ind_stock = ingredientData.ind_stock || 0; // ถ้าไม่ได้รับค่า ind_stock ให้เป็น 0
@@ -168,7 +168,7 @@ router.patch('/update/:id', isAdmin, (req, res, next) => {
 
 //lot ingrediant
 //readlotdetail หน้าดูวัตถุดิบตามล็อต
-router.get('/readlotdetail', isAdminUserOrder, (req, res, next) => {
+router.get('/readlotdetail',  (req, res, next) => {
     // const indl_id = req.params.id;
     var query = `
     SELECT 
@@ -196,7 +196,7 @@ router.get('/readlotdetail', isAdminUserOrder, (req, res, next) => {
 });
 
 // สถานะ lot จาก1 =2 ให้ใช้งานล็อตนั้นได้
-router.put('/updateIngredientLotStatus/:id', isAdmin, (req, res, next) => {
+router.put('/updateIngredientLotStatus/:id', (req, res, next) => {
     const ingredientLotId = req.params.id;
 
     // Check if ingredient lot exists
@@ -371,7 +371,7 @@ router.put('/updateIngredientLotStatus/:id', isAdmin, (req, res, next) => {
 // });
 
 // addqty_stock ได้+add stock ใน ind
-router.post('/addLotIngrediantnew', isAdmin, (req, res, next) => {
+router.post('/addLotIngrediantnew',  (req, res, next) => {
     const ingredient_lot = req.body.ingredient_lot;
     const ingredient_lot_detail = req.body.ingredient_lot_detail;
 
@@ -447,7 +447,7 @@ router.post('/addLotIngrediantnew', isAdmin, (req, res, next) => {
 
 //ingredientLotDetails id
 
-router.get('/ingredientLotDetails/:indl_id', isAdmin, (req, res, next) => {
+router.get('/ingredientLotDetails/:indl_id', (req, res, next) => {
     const indl_id = req.params.indl_id;
 
     const query = `
@@ -472,10 +472,11 @@ router.get('/ingredientLotDetails/:indl_id', isAdmin, (req, res, next) => {
 
 //ใช้ CONCAT ในคำสั่ง SQL เพื่อรวมค่า L กับค่า indl_id และใช้ LPAD เพื่อเติมเลข 0 ให้ครบ 4 ตัวอักษร
 //DATE_FORMAT function ของ MySQL
-router.get('/readlot', isAdmin, (req, res, next) => {
+router.get('/readlot',  (req, res, next) => {
     var query = `
     SELECT 
         indl_id,
+        status,
         CONCAT('L', LPAD(indl_id, 7, '0')) AS indl_id_name,
         DATE_FORMAT(created_at, '%Y-%m-%d') AS created_at,
         DATE_FORMAT(updated_at, '%Y-%m-%d') AS updated_at
@@ -498,9 +499,10 @@ router.get('/readlot/:id', (req, res, next) => {
     var query = `
     SELECT 
         indl_id,
+        status,
         CONCAT('L', LPAD(indl_id, 7, '0')) AS indl_id_name,
         DATE_FORMAT(created_at, '%Y-%m-%d') AS created_at,
-        DATE_FORMAT(update_at, '%Y-%m-%d') AS update_at
+        DATE_FORMAT(updated_at, '%Y-%m-%d') AS update_at
     FROM 
         ingredient_lot 
     WHERE 
@@ -714,7 +716,7 @@ router.get('/readlot/:id', (req, res, next) => {
 //ได้ละเหลือแก้ตรงแสดงให้ไม่เลือกอันที่มี delete_at
 
 //มาเพิ่มหักเข้า-ออก ใน lot เพิ่ม status และใส่เงื่อนไขใน in up
-router.patch('/editData/:indl_id', isAdmin,(req, res, next) => {
+router.patch('/editData/:indl_id',(req, res, next) => {
     const indl_id = req.params.indl_id;
     // const dataToEdit = req.body.dataToEdit;
     const dataToEdit = req.body.dataaToEdit;
@@ -1430,7 +1432,7 @@ router.patch('/editData/:indl_id', isAdmin,(req, res, next) => {
 
 
 // ลองเอง
-router.post('/addUseIngrediantnew', isAdminUserOrder, (req, res, next) => {
+router.post('/addUseIngrediantnew', (req, res, next) => {
     const ingredient_Used = req.body.ingredient_Used;
     const ingredient_Used_detail = req.body.ingredient_Used_detail;
 
@@ -1630,7 +1632,7 @@ router.post('/addUseIngrediantnew', isAdminUserOrder, (req, res, next) => {
 
 //ไม่มีแก้ไขมียกเลิก
 //สถานะ = 2 ยืนยันแล้ว
-router.patch('/updateStatus/:id', isALL, (req, res, next) => {
+router.patch('/updateStatus/:id',  (req, res, next) => {
     const indU_id = req.params.id;
 
     const updateStatusQuery = "UPDATE ingredient_Used SET status = 2 WHERE indU_id = ?";
@@ -1871,7 +1873,7 @@ router.patch('/updateStatus/:id', isALL, (req, res, next) => {
     });
 });
 
-router.get('/detailuse/:id', isAdminUserOrder, (req, res, next) => {
+router.get('/detailuse/:id', (req, res, next) => {
     const indU_id = req.params.id;
     try {
         var query = `SELECT un.* , ind.*, indd.* , indud.*, indu.* ,
@@ -1941,7 +1943,7 @@ router.get('/detailuse/:id', isAdminUserOrder, (req, res, next) => {
 })
 
 // =0 ยกเลิก
-router.patch('/updateStatusnotuse/:id', isALL, (req, res, next) => {
+router.patch('/updateStatusnotuse/:id', (req, res, next) => {
     const indU_id = req.params.id;
 
     const Query = "select status from ingredient_Used where indU_id=? ";

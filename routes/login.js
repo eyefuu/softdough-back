@@ -163,7 +163,7 @@ const path = require('path');
 const bcrypt = require('bcrypt');
 const { body, validationResult, Result } = require('express-validator');
 const { promise } = require('bcrypt/promises');
-const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder } = require('../middleware')
+const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder ,isAdminUserOrder} = require('../middleware')
 
 
 const util = require('util');

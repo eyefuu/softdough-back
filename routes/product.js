@@ -7,6 +7,9 @@ const multer = require('multer');
 const router = express.Router();
 const upload = multer();
 
+const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder ,isAdminUserOrder} = require('../middleware')
+
+
 
 router.post('/addcat', (req, res, next) => {
     let cat = req.body;
@@ -595,8 +598,6 @@ const sharp = require('sharp');
 
 //+recipe 
 //ถ้าจะมีปห น่าจะมีแค่พวก detail ที่ส่งเป็นลิสท์ จาห tsx
-
-// แก้ไขแล้ว
 router.post('/addProductWithRecipe', upload.single('picture'), async (req, res) => {
     const { pd_name, pd_qtyminimum, status, pdc_id, recipe, recipedetail, picture } = req.body;
 
@@ -707,128 +708,6 @@ router.post('/addProductWithRecipe', upload.single('picture'), async (req, res) 
         return res.status(500).json({ message: 'Error resizing image', error });
     }
 });
-// router.post('/addProductWithRecipe', upload.single('picture'), async (req, res) => {
-//     const { pd_name, pd_qtyminimum, status, pdc_id, recipe, recipedetail } = req.body;
-//     const imageBuffer = req.file && req.file.buffer ? req.file.buffer : null;
-
-//     try {
-//         let imageBase64 = null;
-
-//         // ตรวจสอบว่ามีรูปภาพที่อัปโหลดเข้ามาหรือไม่
-//         if (imageBuffer) {
-//             // ปรับขนาดรูปภาพ
-//             const resizedImageBuffer = await sharp(imageBuffer)
-//                 .resize({ width: 300, height: 300 })
-//                 .toBuffer();
-
-//             // เปลี่ยนข้อมูลรูปภาพเป็น base64
-//             imageBase64 = resizedImageBuffer.toString('base64');
-//         }
-
-//         const productWithPicture = { pd_name, pd_qtyminimum, status, pdc_id, picture: imageBase64 };
-
-//         connection.beginTransaction((err) => {
-//             if (err) {
-//                 return res.status(500).json({ message: 'Transaction start error', error: err });
-//             }
-
-//             connection.query('INSERT INTO products SET ?', productWithPicture, (err, productResult) => {
-//                 if (err) {
-//                     console.error('Error inserting product:', err);
-//                     connection.rollback(() => {
-//                         res.status(500).json({ message: 'Error inserting product', error: err });
-//                     });
-//                     return;
-//                 }
-
-//                 if (!productResult || !productResult.insertId) {
-//                     console.error('Product insertion result is invalid:', productResult);
-//                     connection.rollback(() => {
-//                         res.status(500).json({ message: 'Invalid product insertion result' });
-//                     });
-//                     return;
-//                 }
-
-//                 const productId = productResult.insertId;
-
-//                 // ถ้ามีข้อมูลของ "recipe" และ "recipedetail" ให้เพิ่มเข้าไปด้วย
-//                 if (recipe && recipedetail) {
-//                     // เพิ่มข้อมูลของ "recipe"
-//                     connection.query('INSERT INTO recipe SET ?', { ...recipe, pd_id: productId }, (err, recipeResult) => {
-//                         if (err) {
-//                             connection.rollback(() => {
-//                                 return res.status(500).json({ message: 'Error inserting recipe', error: err });
-//                             });
-//                         }
-
-//                         const recipeId = recipeResult.insertId;
-
-//                         // // เพิ่มข้อมูลของ "recipedetail"
-//                         // const values = recipedetail.map(detail => [recipeId, detail.ind_id, detail.ingredients_qty, detail.un_id]);
-//                         // const recipeDetailQuery = `INSERT INTO recipedetail (rc_id, ind_id, ingredients_qty, un_id) VALUES ?`;
-
-//                         // connection.query(recipeDetailQuery, [values], (err, detailResults) => {
-//                         //     if (err) {
-//                         //         connection.rollback(() => {
-//                         //             return res.status(500).json({ message: 'Error inserting recipe details', error: err });
-//                         //         });
-//                         //     }
-//                         // เพิ่มข้อมูลของ "recipedetail"
-//                         const values = recipedetail.map(detail => [recipeId, detail.ind_id, detail.ingredients_qty, detail.un_id]);
-//                         const recipeDetailQuery = `INSERT INTO recipedetail (rc_id, ind_id, ingredients_qty, un_id, deleted_at) VALUES ?`;
-
-//                         // เพิ่ม deleted_at = null ในแต่ละรายการที่เพิ่ม
-//                         const valuesWithDeletedAtNull = values.map(value => [...value, null]);
-
-//                         connection.query(recipeDetailQuery, [valuesWithDeletedAtNull], (err, detailResults) => {
-//                             if (err) {
-//                                 connection.rollback(() => {
-//                                     return res.status(500).json({ message: 'Error inserting recipe details', error: err });
-//                                 });
-//                             }
-
-
-//                             connection.commit((err) => {
-//                                 if (err) {
-//                                     connection.rollback(() => {
-//                                         return res.status(500).json({ message: 'Transaction commit error', error: err });
-//                                     });
-//                                 }
-
-//                                 return res.json({
-//                                     productId,
-//                                     recipeId,
-//                                     message: 'Product and recipe added successfully!',
-//                                 });
-//                             });
-//                         });
-//                     });
-//                 } else {
-//                     // ไม่มีข้อมูลของ "recipe" และ "recipedetail" ให้เพิ่มเฉพาะผลิตภัณฑ์เท่านั้น
-//                     connection.commit((err) => {
-//                         if (err) {
-//                             connection.rollback(() => {
-//                                 return res.status(500).json({ message: 'Transaction commit error', error: err });
-//                             });
-//                         }
-
-//                         return res.json({
-//                             productId,
-//                             message: 'Product added successfully!',
-//                         });
-//                     });
-//                 }
-//             });
-//         });
-//     } catch (error) {
-//         console.error('Error resizing image:', error);
-//         return res.status(500).json({ message: 'Error resizing image', error });
-//     }
-// });
-
-
-
-
 
 
 /////////////
@@ -977,10 +856,10 @@ router.get('/products/:pd_id', async (req, res) => {
             const product = results[0];
 
             // If the product contains picture data
-            // if (product.picture) {
-            //     // Include the base64-encoded picture data in the response
-            //     product.picture = `data:image/jpeg;base64,${product.picture}`;
-            // }
+            if (product.picture) {
+                // Include the base64-encoded picture data in the response
+                product.picture = `data:image/jpeg;base64,${product.picture}`;
+            }
 
             // Return the product data in the response
             res.json({ product });
@@ -991,7 +870,7 @@ router.get('/products/:pd_id', async (req, res) => {
     }
 });
 
-router.get('/pdset/:pd_id', async (req, res, next) => {
+router.get('/pdset/:pd_id',async (req, res, next) => {
     const pd_id = Number(req.params.pd_id);
     try {
         var query = `SELECT pd.* , rc.*, u.un_name as un_name  ,rcd.*,ind.ind_name as ind_name, pdc.pdc_name as pdc_name
@@ -1039,10 +918,10 @@ router.get('/pdset/:pd_id', async (req, res, next) => {
                 };
 
                 // If the product contains picture data
-                // if (formattedResult.picture) {
-                //     // Include the base64-encoded picture data in the response
-                //     formattedResult.picture = data:image/jpeg;base64,${formattedResult.picture};
-                // }
+                if (formattedResult.picture) {
+                    // Include the base64-encoded picture data in the response
+                    formattedResult.picture = `data:image/jpeg;base64,${formattedResult.picture}`;
+                }
 
                 return res.status(200).json(formattedResult);
             } else {
@@ -1376,16 +1255,16 @@ router.patch('/editProductWithRecipe/:pd_id', upload.single('picture'), async (r
 
                                 recipedetail.forEach(detail => {
                                     const { ind_id, ingredients_qty, un_id } = detail;
-
+                            
                                     // Check if ind_id is defined and not null
                                     if (ind_id !== undefined && ind_id !== null) {
-                                        if (indIdsToUpdate.includes(ind_id)) {
+                                        if (indIdsToUpdate.includes(ind_id)){
                                             updateData.push(detail);
-                                            console.log("updateData", updateData)
+                                            console.log("updateData",updateData)
                                         }
-                                        if (indIdsToAdd.includes(ind_id)) {
+                                        if (indIdsToAdd.includes(ind_id)){
                                             insertData.push(detail);
-                                            console.log("insertData", insertData)
+                                            console.log("insertData",insertData)
                                         }
                                         // if (indIdsToDelete.includes(ind_id)){
                                         //     deleteData.push(detail);
@@ -1393,7 +1272,7 @@ router.patch('/editProductWithRecipe/:pd_id', upload.single('picture'), async (r
                                         // }
                                     }
                                 });
-
+                            
 
 
                                 // Update recipedetail records
@@ -1410,17 +1289,17 @@ router.patch('/editProductWithRecipe/:pd_id', upload.single('picture'), async (r
                                     // Update recipedetail records for each detail
 
                                     updateData.forEach(detail => {
-                                        console.log("updateDatade", detail)
-                                        const { ind_id, ingredients_qty, un_id } = detail;
-                                        const updateQuery = `UPDATE recipedetail SET ingredients_qty = ?, un_id = ?, deleted_at = NULL WHERE rc_id = ? AND ind_id = ?`;
-                                        // Execute the update query for each detail
-                                        connection.query(updateQuery, [ingredients_qty, un_id, rcId, ind_id], (err, updateResult) => {
-                                            if (err) {
-                                                connection.rollback(() => {
-                                                    return res.status(500).json({ message: 'Error updating recipedetail', error: err });
-                                                });
-                                            }
-                                        });
+                                        console.log("updateDatade",detail)
+                                    const { ind_id, ingredients_qty, un_id } = detail;
+                                    const updateQuery = `UPDATE recipedetail SET ingredients_qty = ?, un_id = ?, deleted_at = NULL WHERE rc_id = ? AND ind_id = ?`;
+                                    // Execute the update query for each detail
+                                    connection.query(updateQuery, [ingredients_qty, un_id, rcId, ind_id], (err, updateResult) => {
+                                        if (err) {
+                                            connection.rollback(() => {
+                                                return res.status(500).json({ message: 'Error updating recipedetail', error: err });
+                                            });
+                                        }
+                                    });
                                     });
 
                                 }
@@ -1442,11 +1321,11 @@ router.patch('/editProductWithRecipe/:pd_id', upload.single('picture'), async (r
                                 //     });
                                 // }
                                 if (insertData.length > 0) {
-
+            
                                     const insertQuery = "INSERT INTO recipedetail (rc_id, ind_id, ingredients_qty, un_id,deleted_at) VALUES (?,?,?,?,?)";
-
+                        
                                     const flattenedineData = insertData.flat();
-
+                        
                                     flattenedineData.forEach(detail => {
                                         const insertValues = [
                                             rcId,
@@ -1455,7 +1334,7 @@ router.patch('/editProductWithRecipe/:pd_id', upload.single('picture'), async (r
                                             detail.un_id,
                                             null // กำหนดให้ deleted_at เป็น null
                                         ];
-
+                        
                                         connection.query(insertQuery, insertValues, (err, results) => {
                                             if (err) {
                                                 connection.rollback(() => {
@@ -1465,23 +1344,23 @@ router.patch('/editProductWithRecipe/:pd_id', upload.single('picture'), async (r
                                         });
                                     });
                                 }
-
-
-
+                        
+                        
+                                
 
                                 // // Soft delete recipedetail records
                                 if (indIdsToDelete.length > 0) {
                                     indIdsToDelete.forEach(detail => {
-                                        const softDeleteQuery = `UPDATE recipedetail SET deleted_at = CURRENT_TIMESTAMP WHERE rc_id = ? AND ind_id IN (?)`;
-                                        // Soft delete existing records in recipedetail table
-                                        connection.query(softDeleteQuery, [rcId, detail], (err, deleteResult) => {
-                                            if (err) {
-                                                connection.rollback(() => {
-                                                    return res.status(500).json({ message: 'Error soft deleting recipedetail records', error: err });
-                                                });
-                                            }
-                                        });
+                                    const softDeleteQuery = `UPDATE recipedetail SET deleted_at = CURRENT_TIMESTAMP WHERE rc_id = ? AND ind_id IN (?)`;
+                                    // Soft delete existing records in recipedetail table
+                                    connection.query(softDeleteQuery, [rcId, detail], (err, deleteResult) => {
+                                        if (err) {
+                                            connection.rollback(() => {
+                                                return res.status(500).json({ message: 'Error soft deleting recipedetail records', error: err });
+                                            });
+                                        }
                                     });
+                                });
                                 }
                             });
 

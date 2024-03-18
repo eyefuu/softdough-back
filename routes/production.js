@@ -1,6 +1,8 @@
 const express = require("express");
 const connection = require("../connection");
 const router = express.Router();
+const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder ,isAdminUserOrder} = require('../middleware')
+
 
 //ส่วน select ประเภทเมนู แล้วต้องไปแสดง pd ที่เป็นประเภทเมนูนี้ในอีก select
 router.get('/selectpdt/:pdc_id', (req, res, next) => {
@@ -66,7 +68,7 @@ router.post('/addProductionOrder', (req, res, next) => {
 router.get('/readall', (req, res, next) => {
     // const indl_id = req.params.id;
     var query = `
-    SELECT 
+    SELECT
         productionOrder.*,
         CONCAT('PD', LPAD(pdo_id, 7, '0')) AS pdo_id_name,
         DATE_FORMAT(updated_at, '%Y-%m-%d') AS 	updated_at,
@@ -404,7 +406,6 @@ router.patch('/editData/:pdo_id', (req, res, next) => {
     });
 });
 
-//ยืนยันการผลิต 2=กำลังดำเนินการผลิต
 // router.patch('/updatestatus/:pdo_id', (req, res, next) => {
 //     const pdo_id = req.params.pdo_id;
 //     var query = "UPDATE productionOrder SET pdo_status=2 WHERE pdo_id=?";
@@ -420,6 +421,8 @@ router.patch('/editData/:pdo_id', (req, res, next) => {
 //         }
 //     });
 // });
+
+//ยืนยันการผลิต 2=กำลังดำเนินการผลิต
 router.patch('/updatestatus/:pdo_id', (req, res, next) => {
     const pdo_id = req.params.pdo_id;
 
@@ -450,23 +453,24 @@ router.patch('/updatestatus/:pdo_id', (req, res, next) => {
 });
 
 //แก้ไขให้=3 เสร็จสิ้นแล้วสำหรับรายละเอียดบางอัน
-router.patch('/updatestatusdetail/:pdo_id', (req, res, next) => {
-    const pdod_id = req.params.pdo_id;
+// router.patch('/updatestatusdetail/:pdo_id', (req, res, next) => {
+//     const pdod_id = req.params.pdo_id;
     
     
-    // Update pdo_status in productionOrder table
-    // Update pdod_status in productionOrderdetail table
-    var updateProductionOrderDetailQuery = "UPDATE productionOrderdetail SET status = 2 WHERE pdod_id = ?";
-    connection.query(updateProductionOrderDetailQuery, [pdod_id], (detailErr, detailResults) => {
-        if (detailErr) {
-            console.error("Error updating pdod_status in productionOrderdetail:", detailErr);
-            return res.status(500).json(detailErr);
-        }
+//     // Update pdo_status in productionOrder table
+//     // Update pdod_status in productionOrderdetail table
+//     var updateProductionOrderDetailQuery = "UPDATE productionOrderdetail SET status = 2 WHERE pdod_id = ?";
+//     connection.query(updateProductionOrderDetailQuery, [pdod_id], (detailErr, detailResults) => {
+//         if (detailErr) {
+//             console.error("Error updating pdod_status in productionOrderdetail:", detailErr);
+//             return res.status(500).json(detailErr);
+//         }
 
-        return res.status(200).json({ message: "Update success" });
-    });
-});
+//         return res.status(200).json({ message: "Update success" });
+//     });
+// });
 
+//ให้เป็นเสร็จสิ้น ส่งเป็นลิสท์
 router.patch('/updatestatusdetail', (req, res, next) => {
     const pdod_ids = req.body.pdod_ids; // รับ array หรือ list ของ pdod_id ที่ต้องการแก้ไข
 
