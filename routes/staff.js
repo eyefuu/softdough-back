@@ -56,6 +56,8 @@ router.post('/add', isAdmin, (req, res, next) => {
           ],
           (err, results) => {
             if (!err) {
+              console.log(req.session)
+
               return res.status(200).json({ message: 'success' });
             } else {
               console.error('MySQL Error:', err);
@@ -116,7 +118,7 @@ router.post('/add', isAdmin, (req, res, next) => {
 //   });
 // });
 
-router.get('/read', (req, res, next) => {
+router.get('/read',isAdmin, (req, res, next) => {
   var query = 'select *from staff'
   connection.query(query, (err, results) => {
     if (!err) {
@@ -127,7 +129,7 @@ router.get('/read', (req, res, next) => {
   });
 })
 
-router.get('/read/:id', (req, res, next) => {
+router.get('/read/:id',isAdmin, (req, res, next) => {
   const st_id = req.params.id;
   var query = `SELECT staff.*, 
   DATE_FORMAT(st_start, '%Y-%m-%d') AS date_start,
@@ -167,7 +169,7 @@ router.get('/read/:id', (req, res, next) => {
 
 //แค่ลาออก ยังไม่เทส
 
-router.patch('/updatestatus/:id', (req, res, next) => {
+router.patch('/updatestatus/:id', isAdmin, (req, res, next) => {
   const st_id = req.params.id;
   const staff = req.body;
   if (staff.st_status === 2) {
@@ -190,7 +192,7 @@ router.patch('/updatestatus/:id', (req, res, next) => {
 });
 
 //รวม ยังไม่เทส
-router.patch('/update/:id', (req, res, next) => {
+router.patch('/update/:id', isAdmin ,(req, res, next) => {
   const st_id = req.params.id;
   const staff = req.body;
 

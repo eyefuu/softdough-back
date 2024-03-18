@@ -67,6 +67,7 @@ router.get('/readall', (req, res, next) => {
     // const indl_id = req.params.id;
     var query = `
     SELECT 
+        productionOrder.*,
         CONCAT('PD', LPAD(pdo_id, 7, '0')) AS pdo_id_name,
         DATE_FORMAT(updated_at, '%Y-%m-%d') AS 	updated_at,
         pdo_status
@@ -170,6 +171,7 @@ router.get('/readone/:pdo_id', (req, res, next) => {
 
         const query = `
             SELECT 
+                pdo.pdo_status as pdo_status,
                 CONCAT('PD', LPAD(pdo.pdo_id, 7, '0')) AS pdo_id_name,
                 DATE_FORMAT(pdo.updated_at, '%Y-%m-%d') AS updated_at_pdo,
                 pdod.*, pdc.pdc_name AS pdc_name ,pd.pd_name as pd_name
@@ -186,6 +188,7 @@ router.get('/readone/:pdo_id', (req, res, next) => {
             if (results.length > 0) {
                 const formattedResult = {
                     pdo_id_name: results[0].pdo_id_name,
+                    pdo_status: results[0].pdo_status,
                     updated_at: results[0].updated_at_pdo,
                     pdodetail: results.map(item => ({
                         pdod_id: item.pdod_id,
