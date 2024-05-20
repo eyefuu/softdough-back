@@ -1,11 +1,11 @@
 const express = require("express");
 const connection = require("../connection");
 const router = express.Router();
-const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder ,isAdminUserOrder} = require('../middleware')
+const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder, isAdminUserOrder } = require('../middleware')
 
 
 //ส่วน select ประเภทเมนู แล้วต้องไปแสดง pd ที่เป็นประเภทเมนูนี้ในอีก select
-router.get('/selectpdt/:pdc_id',isAdminUserOrder, (req, res, next) => {
+router.get('/selectpdt/:pdc_id', isAdminUserOrder, (req, res, next) => {
     const pdc_id = Number(req.params.pdc_id);
 
     var query = `SELECT pd.pd_name, pdc.*
@@ -22,7 +22,7 @@ router.get('/selectpdt/:pdc_id',isAdminUserOrder, (req, res, next) => {
 })
 
 //ยังไม่เพิ่มส่วน คำนวณต้นทุน
-router.post('/addProductionOrder',isAdmin, (req, res, next) => {
+router.post('/addProductionOrder', isAdmin, (req, res, next) => {
     // const ingredient_lot = req.body;
     // const ingredient_lot_detail = req.body;
     const productionOrder = req.body.productionOrder;
@@ -30,9 +30,9 @@ router.post('/addProductionOrder',isAdmin, (req, res, next) => {
 
 
     const query = "INSERT INTO productionOrder (cost_pricesum	,pdo_status) VALUES (null,?)";
-    
+
     connection.query(query, [productionOrder.pdo_status], (err, results) => {
-        
+
         if (!err) {
             const pdo_id = results.insertId;
 
@@ -65,7 +65,7 @@ router.post('/addProductionOrder',isAdmin, (req, res, next) => {
 
 });
 
-router.get('/readall',isAdminUserOrder, (req, res, next) => {
+router.get('/readall', isAdminUserOrder, (req, res, next) => {
     // const indl_id = req.params.id;
     var query = `
     SELECT
@@ -167,7 +167,7 @@ router.get('/readall',isAdminUserOrder, (req, res, next) => {
 // });
 
 //แบบไม่ใช้ sql
-router.get('/readone/:pdo_id', isAdminUserOrder,(req, res, next) => {
+router.get('/readone/:pdo_id', isAdminUserOrder, (req, res, next) => {
     try {
         const pdo_id = req.params.pdo_id;
 
@@ -217,7 +217,7 @@ router.get('/readone/:pdo_id', isAdminUserOrder,(req, res, next) => {
 });
 
 //edit
-router.patch('/editData/:pdo_id',isAdmin, (req, res, next) => {
+router.patch('/editData/:pdo_id', isAdmin, (req, res, next) => {
     const pdo_id = req.params.pdo_id;
     // const dataToEdit = req.body.dataToEdit;
     const dataToEdit = req.body.dataToEdit;
@@ -346,7 +346,7 @@ router.patch('/editData/:pdo_id',isAdmin, (req, res, next) => {
                     const insertQuery = "INSERT INTO productionOrderdetail (pd_id,qty, status, pdo_id , deleted_at) VALUES (?,?,?,?,?)";
 
                     const flattenedineData = insertData.flat();
-                    console.log("flattenedineData",flattenedineData)
+                    console.log("flattenedineData", flattenedineData)
 
                     flattenedineData.forEach(detail => {
                         const insertValues = [
@@ -401,7 +401,7 @@ router.patch('/editData/:pdo_id',isAdmin, (req, res, next) => {
                 res.status(200).json({ message: "test เงื่อนไข" });
             });
         } else {
-            return res.status(500).json({ message: "status != 1"});
+            return res.status(500).json({ message: "status != 1" });
         }
     });
 });
@@ -423,10 +423,10 @@ router.patch('/editData/:pdo_id',isAdmin, (req, res, next) => {
 // });
 
 //ยืนยันการผลิต 2=กำลังดำเนินการผลิต
-router.patch('/updatestatus/:pdo_id', isAdminUserOrder,(req, res, next) => {
+router.patch('/updatestatus/:pdo_id', isAdminUserOrder, (req, res, next) => {
     const pdo_id = req.params.pdo_id;
 
-    
+
     // Update pdo_status in productionOrder table
     var updateProductionOrderQuery = "UPDATE productionOrder SET pdo_status = 2 WHERE pdo_id = ?";
     connection.query(updateProductionOrderQuery, [pdo_id], (err, results) => {
@@ -455,8 +455,8 @@ router.patch('/updatestatus/:pdo_id', isAdminUserOrder,(req, res, next) => {
 //แก้ไขให้=3 เสร็จสิ้นแล้วสำหรับรายละเอียดบางอัน
 // router.patch('/updatestatusdetail/:pdo_id', (req, res, next) => {
 //     const pdod_id = req.params.pdo_id;
-    
-    
+
+
 //     // Update pdo_status in productionOrder table
 //     // Update pdod_status in productionOrderdetail table
 //     var updateProductionOrderDetailQuery = "UPDATE productionOrderdetail SET status = 2 WHERE pdod_id = ?";
@@ -471,7 +471,7 @@ router.patch('/updatestatus/:pdo_id', isAdminUserOrder,(req, res, next) => {
 // });
 
 //ให้เป็นเสร็จสิ้น ส่งเป็นลิสท์
-router.patch('/updatestatusdetail',isAdminUserOrder, (req, res, next) => {
+router.patch('/updatestatusdetail', isAdminUserOrder, (req, res, next) => {
     const pdod_ids = req.body.pdod_ids; // รับ array หรือ list ของ pdod_id ที่ต้องการแก้ไข
 
     if (!pdod_ids || pdod_ids.length === 0) {
@@ -504,7 +504,30 @@ router.patch('/updatestatusdetail',isAdminUserOrder, (req, res, next) => {
 });
 
 
+//เพิ่มวัตถุดิบที่ใช้ตามผลิต
 
+router.post('/addUseIngrediantnew', (req, res, next) => {
+    const ingredient_Used = req.body.ingredient_Used;
+    const ingredient_Used_detail = req.body.ingredient_Used_detail;
+
+
+    // const query = "INSERT INTO ingredient_Used (status, note) VALUES (?, ?)";
+    // connection.query(query, [ingredient_Used.status, ingredient_Used.note], (err, results) => {
+    //     return res.status(500).json({ message: "error", error: err });
+    //     }
+    // });
+});
+
+
+//เอาไว้ก่อน
+// สร้างฟังก์ชัน calculateMaterialCost คำนวณต้นทุนต่อ 1 วัตถุดิบ
+function calculateMaterialCost(quantity, price, totalQuantity) {
+    // คำนวณต้นทุนวัตถุดิบ
+    const materialCost = (quantity * (price / totalQuantity)).toFixed(2);
+
+    // ส่งค่าต้นทุนวัตถุดิบกลับ
+    return { materialCost };
+}
 
 
 module.exports = router;

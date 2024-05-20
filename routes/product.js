@@ -1438,6 +1438,21 @@ router.patch('/editProductWithRecipe/:pd_id', isAdmin,upload.single('picture'), 
 // });
 
 
+//ลองค้นหา
+router.get('/ingredient/search', (req, res) => {
+    const searchTerm = req.query.ind_name;
+    const sql = `SELECT * FROM ingredient WHERE ind_name LIKE '%${searchTerm}%'`;
+  
+    connection.query(sql, (err, result) => {
+      if (err) {
+        console.error('Error executing query:', err);
+        res.status(500).send('Internal server error');
+        return;
+      }
+      res.json(result);
+    });
+  });
+
 
 
 
