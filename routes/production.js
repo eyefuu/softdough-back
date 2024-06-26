@@ -189,6 +189,7 @@ router.get('/readone/:pdo_id', (req, res, next) => {
         connection.query(query, pdo_id, (err, results) => {
             if (results.length > 0) {
                 const formattedResult = {
+                    pdo_id: results[0].pdo_id,
                     pdo_id_name: results[0].pdo_id_name,
                     pdo_status: results[0].pdo_status,
                     updated_at: results[0].updated_at_pdo,
@@ -472,7 +473,7 @@ router.patch('/updatestatus/:pdo_id', (req, res, next) => {
 
 //ให้เป็นเสร็จสิ้น ส่งเป็นลิสท์
 router.patch('/updatestatusdetail', (req, res, next) => {
-    const pdod_ids = req.body.pdod_ids; // รับ array หรือ list ของ pdod_id ที่ต้องการแก้ไข
+    const pdod_ids = req.body.pdod_id; // รับ array หรือ list ของ pdod_id ที่ต้องการแก้ไข
 
     if (!pdod_ids || pdod_ids.length === 0) {
         return res.status(400).json({ message: "No pdod_id provided" });

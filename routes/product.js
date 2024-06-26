@@ -842,7 +842,7 @@ router.get('/products/:pd_id', async (req, res) => {
 
     try {
         // Perform a database query to retrieve the product data
-        connection.query('SELECT * FROM products WHERE pd_id = ?', productId, (err, results) => {
+        connection.query('SELECT pd.* , rc.* FROM products pd JOIN recipe rc ON rc.pd_id = pd.pd_id WHERE pd.pd_id = ?', productId, (err, results) => {
             if (err) {
                 console.error('Error retrieving product:', err);
                 return res.status(500).json({ message: 'Error retrieving product', error: err });
@@ -856,10 +856,10 @@ router.get('/products/:pd_id', async (req, res) => {
             const product = results[0];
 
             // If the product contains picture data
-            if (product.picture) {
-                // Include the base64-encoded picture data in the response
-                product.picture = `data:image/jpeg;base64,${product.picture}`;
-            }
+            // if (product.picture) {
+            //     // Include the base64-encoded picture data in the response
+            //     product.picture = `data:image/jpeg;base64,${product.picture}`;
+            // }
 
             // Return the product data in the response
             res.json({ product });
@@ -1158,7 +1158,7 @@ router.get('/productsall', async (req, res, next) => {
 router.patch('/editProductWithRecipe/:pd_id', upload.single('picture'), async (req, res) => {
     const pd_id = req.params.pd_id;
 
-    const { pd_name, pd_qtyminimum, status, pdc_id, recipe, recipedetail } = req.body;
+    const { pd_name, pd_qtyminimum, status, pdc_id, recipe, recipedetail,picture } = req.body;
     const imageBuffer = req.file && req.file.buffer ? req.file.buffer : null;
 
     try {
@@ -1175,11 +1175,11 @@ router.patch('/editProductWithRecipe/:pd_id', upload.single('picture'), async (r
             imageBase64 = resizedImageBuffer.toString('base64');
         }
 
-        const productUpdateData = { pd_name, pd_qtyminimum, status, pdc_id };
+        const productUpdateData = { pd_name, pd_qtyminimum, status, pdc_id, picture };
         console.log(productUpdateData)
-        if (imageBase64) {
-            productUpdateData.picture = imageBase64;
-        }
+        // if (imageBase64) {
+        //     productUpdateData.picture = imageBase64;
+        // }
 
         connection.beginTransaction((err) => {
             if (err) {
@@ -1207,6 +1207,8 @@ router.patch('/editProductWithRecipe/:pd_id', upload.single('picture'), async (r
                 if (recipe && recipedetail) {
 
                     // const recipeUpdateData = { };
+                    // const salesmenudetailar = JSON.parse(salesmenudetail);  
+                    console.log(recipe,"recipe")
 
                     connection.query('UPDATE recipe SET ? WHERE pd_id = ?', [recipe, pd_id], (err, recipeResult) => {
                         if (err) {
