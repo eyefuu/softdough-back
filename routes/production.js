@@ -22,7 +22,7 @@ router.get('/selectpdt/:pdc_id', isAdminUserOrder, (req, res, next) => {
 })
 
 //ยังไม่เพิ่มส่วน คำนวณต้นทุน
-router.post('/addProductionOrder', isAdmin, (req, res, next) => {
+router.post('/addProductionOrder', (req, res, next) => {
     // const ingredient_lot = req.body;
     // const ingredient_lot_detail = req.body;
     const productionOrder = req.body.productionOrder;

@@ -598,7 +598,7 @@ const sharp = require('sharp');
 
 //+recipe 
 //ถ้าจะมีปห น่าจะมีแค่พวก detail ที่ส่งเป็นลิสท์ จาห tsx
-router.post('/addProductWithRecipe', upload.single('picture'), isAdmin,async (req, res) => {
+router.post('/addProductWithRecipe', upload.single('picture'),async (req, res) => {
     const { pd_name, pd_qtyminimum, status, pdc_id, recipe, recipedetail } = req.body;
     const imageBuffer = req.file && req.file.buffer ? req.file.buffer : null;
 
