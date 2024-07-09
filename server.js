@@ -27,6 +27,8 @@ const productRoute = require('./routes/product')
 const salesmenuRoute = require('./routes/salesmenu')
 const productionRoute = require('./routes/production')
 const loginRoute = require('./routes/login')
+const expensesRoute = require('./routes/expenses')
+
 // const { ifLoggedIn,ifNotLoggedIn, router: loginRoute } = require('./routes/login');
 
 
@@ -37,6 +39,8 @@ app.use('/product',productRoute)
 app.use('/salesmenu',salesmenuRoute)
 app.use('/production',productionRoute)
 app.use('/login',loginRoute)
+app.use('/expenses',expensesRoute)
+
 
 
 

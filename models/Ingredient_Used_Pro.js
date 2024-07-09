@@ -13,7 +13,7 @@ module.exports = (sequelize, DataTypes) => {
         qty_used_sum: DataTypes.INTEGER,
         status: DataTypes.STRING(1),
         scrap: DataTypes.INTEGER,
-
+        qtyusesum: DataTypes.INTEGER,
     }, {
         sequelize,
         modelName: 'Ingredient_Used_Pro',

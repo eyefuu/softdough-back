@@ -1,40 +1,37 @@
 'use strict';
 module.exports = {
     async up(queryInterface, Sequelize) {
-        await queryInterface.createTable('ingredient_Used_Pro', {
-            induP_id: {
+        await queryInterface.createTable('expenses', {
+            ep_id : {
                 allowNull: false,
                 autoIncrement: true,
                 primaryKey: true,
                 type: Sequelize.INTEGER
             },
-            pdod_id: {
-                type: Sequelize.INTEGER,
-                allowNull: false,
-                references: {
-                    model: 'productionOrderdetail',
-                    key: 'pdod_id'
-                }
+            ep_sum: {
+                type: Sequelize.FLOAT
             },
-            indlde_id: {
-                type: Sequelize.INTEGER,
-                allowNull: false,
-                references: {
-                    model: 'ingredient_lot_detail',
-                    key: 'ind_id'
-                }
+            ep_note: {
+                type: Sequelize.STRING
             },
-            qty_used_sum: {
-                type: Sequelize.INTEGER
-            },
-            status: {
+            ep_status: {
                 type: Sequelize.STRING(1)
             },
-            scrap: {
-                type: Sequelize.INTEGER
+            ept_id: {
+                type: Sequelize.INTEGER,
+                allowNull: false,
+                references: {
+                    model: 'expensesType',
+                    key: 'ept_id'
+                }
             },
-            qtyusesum: {
-                type: Sequelize.INTEGER
+            user_id: {
+                type: Sequelize.INTEGER,
+                allowNull: false,
+                references: {
+                    model: 'staff',
+                    key: 'st_id'
+                }
             },
             created_at: {
                 allowNull: false,
@@ -55,6 +52,6 @@ module.exports = {
         });
     },
     async down(queryInterface, Sequelize) {
-        await queryInterface.dropTable('ingredient_Used_Pro');
+        await queryInterface.dropTable('expenses');
     }
 };
