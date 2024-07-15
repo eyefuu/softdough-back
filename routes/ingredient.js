@@ -67,7 +67,9 @@ router.get('/readall', (req, res, next) => {
         SUM(ingredient_lot_detail.qty_stock) AS total_stock,
         ingredient.ind_name,
         (SUM(ingredient_lot_detail.qty_stock) DIV ingredient.qty_per_unit) AS ind_stock,        unit1.un_name AS un_purchased_name,
-        unit2.un_name AS un_ind_name 
+        unit2.un_name AS un_ind_name ,
+        ingredient.status,
+        ingredient.qtyminimum
     FROM 
         ingredient 
     LEFT JOIN 
@@ -78,12 +80,11 @@ router.get('/readall', (req, res, next) => {
         ingredient_lot_detail ON ingredient.ind_id = ingredient_lot_detail.ind_id
     LEFT JOIN 
         ingredient_lot ON ingredient_lot_detail.indl_id = ingredient_lot.indl_id
-    WHERE 
-        ingredient.status = 1
+    WHERE  
+        ingredient_lot.status = 2
     AND 
         ingredient_lot_detail.deleted_at IS NULL
-    AND 
-        ingredient_lot.status = 2
+    
     GROUP BY 
         ingredient_lot_detail.ind_id
 `;
@@ -1758,80 +1759,81 @@ router.post('/addUseIngrediantnew', (req, res, next) => {
 
 //เพิ่มวัตถุดิบที่ใช้ตาม ล็อตผลิต
 //กำลังคิดว่ายังไม่เพิ่มลง DB ส่งแบบ json ไปให้ แล้วจะสามารถแก้ไขข้อมูล json นั้นผ่านหน้าเว็บได้มั้ย แล้วเพิ่มลง DB เมื่อกดยืนยัน โดยเอาจาก json ที่ส่งไป แต่ตัวที่ไม่โชว์จะทำได้มั้ย
-router.post('/addUseIngrediantLotpro', (req, res, next) => {
-    const pdo_id = req.body.pdo_id;
+// router.post('/addUseIngrediantLotpro', (req, res, next) => {
+//     const pdo_id = req.body.pdo_id;
 
-    // ตามหาจำนวนวัตถุดิบที่ใช้ก่อน
-    const query = `
-    SELECT 
-        pdo.pdo_id, 
-        pdod.*, 
-        pd.*, 
-        rc.*, 
-        rcd.*, 
-        ind.*
-    FROM 
-        productionOrder as pdo
-    JOIN 
-        productionOrderdetail as pdod ON pdod.pdo_id = pdo.pdo_id
-    JOIN 
-        products as pd ON pd.pd_id = pdod.pd_id
-    JOIN 
-        recipe as rc ON rc.pd_id = pd.pd_id
-    JOIN 
-        recipedetail as rcd ON rcd.rc_id = rc.rc_id
-    JOIN 
-        ingredient as ind ON rcd.ind_id = ind.ind_id
-    WHERE 
-        pdo.pdo_id = ?;`;
+//     // ตามหาจำนวนวัตถุดิบที่ใช้ก่อน
+//     const query = `
+//     SELECT 
+//         pdo.pdo_id, 
+//         pdod.*, 
+//         pd.*, 
+//         rc.*, 
+//         rcd.*, 
+//         ind.*
+//     FROM 
+//         productionOrder as pdo
+//     JOIN 
+//         productionOrderdetail as pdod ON pdod.pdo_id = pdo.pdo_id
+//     JOIN 
+//         products as pd ON pd.pd_id = pdod.pd_id
+//     JOIN 
+//         recipe as rc ON rc.pd_id = pd.pd_id
+//     JOIN 
+//         recipedetail as rcd ON rcd.rc_id = rc.rc_id
+//     JOIN 
+//         ingredient as ind ON rcd.ind_id = ind.ind_id
+//     WHERE 
+//         pdo.pdo_id = ?;`;
 
-    connection.query(query, pdo_id, (err, results) => {
-        if (err) {
-            console.error("MySQL Query Error:", err);
-            return;
-        }
+//     connection.query(query, pdo_id, (err, results) => {
+//         if (err) {
+//             console.error("MySQL Query Error:", err);
+//             return;
+//         }
 
-        const groupedResults = results.reduce((acc, row) => {
-            if (!acc[row.pdod_id]) {
-                acc[row.pdod_id] = [];
-            }
-            acc[row.pdod_id].push(row);
-            return acc;
-        }, {});
+//         const groupedResults = results.reduce((acc, row) => {
+//             if (!acc[row.pdod_id]) {
+//                 acc[row.pdod_id] = [];
+//             }
+//             acc[row.pdod_id].push(row);
+//             return acc;
+//         }, {});
 
-        const finalResults = [];
+//         const finalResults = [];
 
-        Object.entries(groupedResults).forEach(([pdod_id, rows]) => {
-            rows.forEach(row => {
-                const Qx = row.ingredients_qty;
-                const N = row.qty;
-                const M = row.produced_qty;
-                const qty_per_unit = row.qty_per_unit;
+//         Object.entries(groupedResults).forEach(([pdod_id, rows]) => {
+//             rows.forEach(row => {
+//                 const Qx = row.ingredients_qty;
+//                 const N = row.qty;
+//                 const M = row.produced_qty;
+//                 const qty_per_unit = row.qty_per_unit;
 
-                const Qx_prime = (Qx * N) / M;
-                const qty_used_sum = Math.floor(Qx_prime / qty_per_unit);
-                const scrap = Qx_prime % qty_per_unit;
+//                 const Qx_prime = (Qx * N) / M;
+//                 const qty_used_sum = Math.floor(Qx_prime / qty_per_unit);
+//                 const scrap = Qx_prime % qty_per_unit;
 
-                finalResults.push({
-                    pdod_id: parseInt(pdod_id, 10),
-                    ind_id: row.ind_id,
-                    qty_used_sum: qty_used_sum,
-                    scrap: scrap
-                });
-            });
-        });
+//                 finalResults.push({
+//                     pdod_id: parseInt(pdod_id, 10),
+//                     ind_id: row.ind_id,
+//                     qty_used_sum: qty_used_sum,
+//                     scrap: scrap
+//                 });
+//             });
+//         });
 
-        console.log(finalResults);
-
-
-
-        res.status(200).json({ finalResults: finalResults });
-    });
+//         console.log(finalResults);
 
 
 
+//         res.status(200).json({ finalResults: finalResults });
+//     });
 
-});
+
+
+
+// });
+
 // ui อาจต้องเปลี่ยน ส่งไปโชว์ที่คำนวณ
 router.get('/addUseIngrediantLotpro/:pdo_id', (req, res, next) => {
     const pdo_id = req.params.pdo_id;
@@ -1892,7 +1894,8 @@ router.get('/addUseIngrediantLotpro/:pdo_id', (req, res, next) => {
                     ind_name: row.ind_name,
                     ind_id: row.ind_id,
                     qty_used_sum: qty_used_sum,
-                    scrap: scrap
+                    scrap: scrap,
+                    pdo_id: pdo_id
                 });
             });
         });
@@ -1911,9 +1914,10 @@ router.get('/addUseIngrediantLotpro/:pdo_id', (req, res, next) => {
 //แก้ไขรายละเอียดวัตถุดิบที่ใช้ตามล็อต เปลี่ยนไปแก้ไขตรง ui แล้วส่งมาเพิ่มทีเดียว
 //เพิ่มตามล้อต
 //เพิ่มได้แล้วยังไม่เช็คคำนวณ
+//status pdo = 4 แล้ว
 router.post('/addUseIngrediantLot', (req, res, next) => {
     const ingredient_Used_Lot = req.body.ingredient_Used_Lot;
-
+    const pdo_id = req.body.pdo_id;
     ingredient_Used_Lot.forEach((detail, index) => {
         // const ind_id = detail.ind_id;
         // const qty_used_sum = detail.qty_used_sum;
@@ -1964,7 +1968,7 @@ router.post('/addUseIngrediantLot', (req, res, next) => {
                             const itemIn = {
                                 // induP: InduP, // ใช้ค่าจากตัวแปรนอกลูป
                                 indlde_id: result.indlde_id, // ใช้ค่าจากการ query
-                                pdod_id:detail.pdod_id,
+                                pdod_id: detail.pdod_id,
                                 qty_used_sum: detail.qty_used_sum, // ใช้ค่าจากตัวแปรนอกลูป
                                 scrap: detail.scrap, // ใช้ค่าจากตัวแปรนอกลูป
                                 qtyusesum: new_qty_stockup, // ใช้ค่าที่คำนวณได้
@@ -1986,7 +1990,7 @@ router.post('/addUseIngrediantLot', (req, res, next) => {
                             const itemIn = {
                                 // induP: InduP, // ใช้ค่าจากตัวแปรนอกลูป
                                 indlde_id: result.indlde_id, // ใช้ค่าจากการ query
-                                pdod_id:detail.pdod_id,
+                                pdod_id: detail.pdod_id,
                                 qty_used_sum: detail.qty_used_sum, // ใช้ค่าจากตัวแปรนอกลูป
                                 scrap: detail.scrap, // ใช้ค่าจากตัวแปรนอกลูป
                                 qtyusesum: total_quantity_used, // ใช้ค่าที่คำนวณได้
@@ -2027,7 +2031,7 @@ router.post('/addUseIngrediantLot', (req, res, next) => {
                             const itemIn = {
                                 // induP: InduP, // ใช้ค่าจากตัวแปรนอกลูป
                                 indlde_id: result.indlde_id, // ใช้ค่าจากการ query
-                                pdod_id:detail.pdod_id,
+                                pdod_id: detail.pdod_id,
                                 qty_used_sum: detail.qty_used_sum, // ใช้ค่าจากตัวแปรนอกลูป
                                 scrap: detail.scrap, // ใช้ค่าจากตัวแปรนอกลูป
                                 qtyusesum: new_qty_stockup, // ใช้ค่าที่คำนวณได้
@@ -2057,7 +2061,7 @@ router.post('/addUseIngrediantLot', (req, res, next) => {
                             const itemIn = {
                                 // induP: InduP, // ใช้ค่าจากตัวแปรนอกลูป
                                 indlde_id: result.indlde_id, // ใช้ค่าจากการ query
-                                pdod_id:detail.pdod_id,
+                                pdod_id: detail.pdod_id,
                                 qty_used_sum: detail.qty_used_sum, // ใช้ค่าจากตัวแปรนอกลูป
                                 scrap: detail.scrap, // ใช้ค่าจากตัวแปรนอกลูป
                                 qtyusesum: new_qty_stockup, // ใช้ค่าที่คำนวณได้
@@ -2085,7 +2089,7 @@ router.post('/addUseIngrediantLot', (req, res, next) => {
                             const itemIn = {
                                 // induP: InduP, // ใช้ค่าจากตัวแปรนอกลูป
                                 indlde_id: result.indlde_id, // ใช้ค่าจากการ query
-                                pdod_id:detail.pdod_id,
+                                pdod_id: detail.pdod_id,
                                 qty_used_sum: detail.qty_used_sum, // ใช้ค่าจากตัวแปรนอกลูป
                                 scrap: detail.scrap, // ใช้ค่าจากตัวแปรนอกลูป
                                 qtyusesum: result.qty_stock, // ใช้ค่าที่คำนวณได้
@@ -2112,7 +2116,7 @@ router.post('/addUseIngrediantLot', (req, res, next) => {
             //แก้migreatตรงqtyusesum
             if (detailall.length > 0) {
                 const insertDetailQuery = "INSERT INTO ingredient_Used_Pro ( indlde_id, pdod_id, qty_used_sum, scrap, qtyusesum,status, deleted_at) VALUES ?";
-                const detailValues = detailall.map(item => [item.indlde_id, item.pdod_id,item.qty_used_sum, item.scrap, item.qtyusesum,item.status, item.deleted_at]);
+                const detailValues = detailall.map(item => [item.indlde_id, item.pdod_id, item.qty_used_sum, item.scrap, item.qtyusesum, item.status, item.deleted_at]);
 
                 connection.query(insertDetailQuery, [detailValues], (err, result) => {
                     if (err) {
@@ -2133,6 +2137,9 @@ router.post('/addUseIngrediantLot', (req, res, next) => {
                 // const detailValues = upind.map(item => [item.qty_stock, item.indlde_id]);
                 // const flattenedUpdateData = upind.flat();
 
+                const updatestatusQuery = " UPDATE productionOrder SET pdo_status = 4 WHERE pdo_id = ?";
+
+
                 upind.forEach(item => {
                     const updateValues = [item.qty_stock, item.indlde_id]
 
@@ -2147,6 +2154,17 @@ router.post('/addUseIngrediantLot', (req, res, next) => {
                     });
                 });
 
+                connection.query(updatestatusQuery, pdo_id, (err, results) => {
+                    if (err) {
+                        console.error("MySQL Update Query Error:", err);
+                        return res.status(500).json({ message: "error", error: err });
+                    }
+
+                    console.log("Updated pdo_id data:", results);
+                });
+
+
+
             }
 
 
@@ -2154,10 +2172,61 @@ router.post('/addUseIngrediantLot', (req, res, next) => {
 
     });
     // if (!err) {
-        res.status(200).json({ message: "success" });
+    res.status(200).json({ message: "success" });
     // }
 
 })
+//ดูวัตถุดิบที่ใช้all
+
+router.get('/usedIngredients', (req, res, next) => {
+    const query = `
+    SELECT * FROM (
+        SELECT 
+            indU.indU_id AS id,
+            indU.status,
+            indU.note,
+            indU.created_at,
+            indU.updated_at,
+            'ทั่วไป' AS name,
+            'other' AS checkk
+        FROM 
+            ingredient_Used AS indU
+        WHERE 
+            indU.status != 0
+        
+        UNION ALL
+        
+        SELECT 
+            CONCAT('PD', LPAD(induP.pdod_id, 7, '0')) AS id,
+            induP.status,
+            NULL AS note,
+            MAX(induP.created_at) AS created_at,
+            NULL AS updated_at,
+            'ผลิตตามใบสั่งผลิต' AS name,
+            'production' AS checkk
+        FROM 
+            ingredient_Used_Pro AS induP
+        WHERE 
+            induP.deleted_at IS NULL
+        GROUP BY 
+            induP.pdod_id
+    ) AS combined_results
+    ORDER BY 
+        created_at DESC;
+    
+    `;
+
+    connection.query(query, (err, results) => {
+        if (err) {
+            console.error("MySQL Query Error:", err);
+            return res.status(500).json({ message: "error", error: err });
+        }
+
+        return res.status(200).json(results);
+    });
+});
+
+
 
 
 

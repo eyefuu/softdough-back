@@ -18,6 +18,61 @@ router.post('/addtype',(req, res, next) => {
     });
 })
 
+router.get('/readtype', (req, res, next) => {
+    var query = 'select *from expensesType'
+    connection.query(query, (err, results) => {
+        if (!err) {
+            return res.status(200).json(results);
+        } else {
+            return res.status(500).json(err);
+        }
+    });
+})
+
+router.patch('/updatetype/:ept_id',(req, res, next) => {
+    const ept_id = req.params.ept_id;
+    const type = req.body;
+    var query = "UPDATE expensesType SET ept_name=? WHERE ept_id=?";
+    connection.query(query, [type.ept_name, ept_id], (err, results) => {
+        if (!err) {
+            if (results.affectedRows === 0) {
+                console.error(err);
+                return res.status(404).json({ message: "id does not found" });
+            }
+            return res.status(200).json({ message: "update success" });
+        } else {
+            return res.status(500).json(err);
+        }
+    });
+});
+
+router.post('/add', (req, res, next) => {
+    let expensesData = req.body;
+
+    const query = `
+        INSERT INTO expenses (ep_sum, ep_note, ep_status, ept_id, user_id)
+        VALUES (?, ?, ?, ?, ?);
+    `;
+    const values = [
+        expensesData.ep_sum,
+        expensesData.ep_note,
+        expensesData.ep_status,
+        expensesData.ept_id,
+        expensesData.user_id,
+       
+    ];
+
+    connection.query(query, values, (err, results) => {
+        if (!err) {
+            return res.status(200).json({ message: "success" });
+        } else {
+            console.error("MySQL Error:", err);
+            return res.status(500).json({ message: "error", error: err });
+        }
+    });
+});
+
+
 
 
 module.exports = router;

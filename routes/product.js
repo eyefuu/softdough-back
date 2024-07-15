@@ -11,7 +11,7 @@ const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder ,isAdm
 
 
 
-router.post('/addcat', isAdmin,(req, res, next) => {
+router.post('/addcat',(req, res, next) => {
     let cat = req.body;
     query = "insert into productCategory (pdc_name) values(?)";
     connection.query(query, [cat.pdc_name], (err, results) => {
