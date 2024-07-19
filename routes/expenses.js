@@ -46,20 +46,53 @@ router.patch('/updatetype/:ept_id',(req, res, next) => {
     });
 });
 
-router.post('/add', (req, res, next) => {
+// router.post('/add', isAdminUserOrder, (req, res, next) => {
+//     let expensesData = req.body;
+//     const userId = req.session.st_id; // ดึง user_id จาก session
+
+//     const query = `
+//         INSERT INTO expenses (ep_sum, ep_note, ep_status, ept_id, ep_date, user_id)
+//         VALUES (?, ?, ?, ?, ?, ?);
+//     `;
+//     const values = [
+//         expensesData.ep_sum,
+//         expensesData.ep_note,
+//         expensesData.ep_status,
+//         expensesData.ept_id,
+//         expensesData.ep_date,
+//         userId, // ใช้ user_id ที่ดึงจาก session
+//     ];
+
+//     connection.query(query, values, (err, results) => {
+//         if (!err) {
+//             return res.status(200).json({ message: "success" });
+//         } else {
+//             console.error("MySQL Error:", err);
+//             return res.status(500).json({ message: "error", error: err });
+//         }
+//     });
+// });
+
+router.post('/add', isAdminUserOrder, (req, res, next) => {
     let expensesData = req.body;
+    const userId = req.session.st_id; // ดึง user_id จาก session
+    console.log('Session:', req.session); // Check session data
+    console.log('Body:', req.body); // Check request body
+    if (!userId) {
+        return res.status(403).json({ message: 'Access Forbidden: No user ID found in session' });
+    }
 
     const query = `
-        INSERT INTO expenses (ep_sum, ep_note, ep_status, ept_id, user_id)
-        VALUES (?, ?, ?, ?, ?);
+        INSERT INTO expenses (ep_sum, ep_note, ep_status, ept_id, ep_date, user_id)
+        VALUES (?, ?, ?, ?, ?, ?);
     `;
     const values = [
         expensesData.ep_sum,
         expensesData.ep_note,
         expensesData.ep_status,
         expensesData.ept_id,
-        expensesData.user_id,
-       
+        expensesData.ep_date,
+        userId, // ใช้ user_id ที่ดึงจาก session
     ];
 
     connection.query(query, values, (err, results) => {

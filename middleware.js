@@ -124,9 +124,10 @@ const isAdminUserOrder = (req, res, next) => {
     if (req.session && (req.session.st_type === '0' || req.session.st_type === '1')) {
         next(); // Allow to proceed to the next middleware or route handler
     } else {
-        res.status(403).send('Access Forbidden'); // Send 403 Forbidden status if not an admin or order user
-    } 
+        res.status(403).send('Access Forbidden'); // ส่งค่าสถานะ 403 Forbidden ถ้าไม่ใช่ order user
+    }
 };
+
 const isALL = (req, res, next) => {
     if (req.session && (req.session.st_type === '0' || req.session.st_type === '1' || req.session.st_type === '2')) {
         next(); // Allow to proceed to the next middleware or route handler
@@ -136,4 +137,5 @@ const isALL = (req, res, next) => {
 };
 
 
-module.exports = { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder,isAdminUserOrder,isALL };
+
+module.exports = { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder,isAdminUserOrder,isALL};

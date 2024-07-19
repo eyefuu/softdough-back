@@ -19,7 +19,7 @@ const bcrypt = require('bcrypt');
 const  {ifNotLoggedIn,ifLoggedIn, isAdmin,isUserProduction,isUserOrder} = require('../middleware')
 
 
-router.post('/add', isAdmin, (req, res, next) => {
+router.post('/add', (req, res, next) => {
   let staff = req.body;
 
   // Generate salt and hash password

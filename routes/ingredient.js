@@ -36,8 +36,9 @@ router.post('/add', (req, res, next) => {
     });
 });
 
-//อ่านวัตถุดิบทั้งหมด เก่าาาาาาา 
-router.get('/read', isAdminUserOrder, (req, res, next) => {
+//อ่านวัตถุดิบทั้งหมด
+router.get('/read', (req, res, next) => {
+    Updateqtystock()
     var query = `
     SELECT ingredient.*, 
            unit1.un_name AS un_purchased_name,
@@ -45,7 +46,6 @@ router.get('/read', isAdminUserOrder, (req, res, next) => {
     FROM ingredient 
     LEFT JOIN unit AS unit1 ON ingredient.un_purchased = unit1.un_id
     LEFT JOIN unit AS unit2 ON ingredient.un_ind = unit2.un_id
-    where status = 1
 `;
 
     //LEFT JOIN แทน JOIN เพื่อให้ข้อมูลจากตาราง ingredient แสดงออกมาทั้งหมด แม้ว่าข้อมูลใน unit อาจจะไม่ตรงกับเงื่อนไขใน JOIN
@@ -59,7 +59,35 @@ router.get('/read', isAdminUserOrder, (req, res, next) => {
     });
 });
 
+// อ่านวัตถุดิบทั้งหมด เปลี่ยนมาเป็น async
+// router.get('/read', async (req, res) => {
+//     try {
+//         await Updateqtystock(); // Wait for Updateqtystock to complete before querying data
+
+//         const query = `
+//             SELECT ingredient.*, 
+//                    unit1.un_name AS un_purchased_name,
+//                    unit2.un_name AS un_ind_name 
+//             FROM ingredient 
+//             LEFT JOIN unit AS unit1 ON ingredient.un_purchased = unit1.un_id
+//             LEFT JOIN unit AS unit2 ON ingredient.un_ind = unit2.un_id
+//         `;
+
+//         connection.query(query, (err, results) => {
+//             if (!err) {
+//                 res.status(200).json(results);
+//             } else {
+//                 res.status(500).json({ error: "Failed to fetch data", message: err.message });
+//             }
+//         });
+//     } catch (error) {
+//         console.error("Error in Updateqtystock:", error);
+//         res.status(500).json({ error: "Failed to update stock quantities", message: error.message });
+//     }
+// });
+
 //ลองแบบรวม detaillot เอา stock ของ detail มาบวก
+//แยกเป็นฟังก์ชันเลยให้ทำตลอด ไม่ใช้
 router.get('/readall', (req, res, next) => {
     var query = `
     SELECT 
@@ -115,6 +143,61 @@ router.get('/readall', (req, res, next) => {
         }
     });
 });
+
+//ไปใช้แค่ใน read all หรืออาจไปใช้ที่อื่นได้แต่เช็คดีๆ แต่เอาไว้แค่ตอนreadก่อน นึกออกแค่ยังไงหน้าเว็บก็แสดงตรงนั้น
+const Updateqtystock = async () => {
+    console.log("Updating stock quantities");
+    try {
+        const query = `
+            SELECT 
+                ingredient.ind_id,
+                SUM(ingredient_lot_detail.qty_stock) AS total_stock,
+                ingredient.ind_name,
+                (SUM(ingredient_lot_detail.qty_stock) DIV ingredient.qty_per_unit) AS ind_stock,
+                unit1.un_name AS un_purchased_name,
+                unit2.un_name AS un_ind_name,
+                ingredient.status,
+                ingredient.qtyminimum
+            FROM 
+                ingredient 
+            LEFT JOIN 
+                unit AS unit1 ON ingredient.un_purchased = unit1.un_id
+            LEFT JOIN 
+                unit AS unit2 ON ingredient.un_ind = unit2.un_id
+            LEFT JOIN 
+                ingredient_lot_detail ON ingredient.ind_id = ingredient_lot_detail.ind_id
+            LEFT JOIN 
+                ingredient_lot ON ingredient_lot_detail.indl_id = ingredient_lot.indl_id
+            WHERE  
+                ingredient_lot.status = 2
+            AND 
+                ingredient_lot_detail.deleted_at IS NULL
+            GROUP BY 
+                ingredient_lot_detail.ind_id
+        `;
+
+        const [results] = await connection.promise().query(query);
+        
+        const updateQuery = "UPDATE ingredient SET ind_stock = ?, status = ? WHERE ind_id = ?";
+        const updatePromises = results.map(item => {
+            const newStock = item.ind_stock;
+            const newStatus = newStock <= item.qtyminimum ? 1 : 2;
+            const updateValues = [newStock, newStatus, item.ind_id];
+
+            console.log("Updating data:", updateValues);
+
+            return connection.promise().query(updateQuery, updateValues);
+        });
+
+        await Promise.all(updatePromises);
+
+        console.log("All stock quantities updated successfully");
+    } catch (error) {
+        console.error('MySQL Error:', error);
+    }
+};
+
+
 
 
 

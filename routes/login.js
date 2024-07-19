@@ -75,7 +75,7 @@ router.post('/login', ifLoggedIn, [
         })
     }
 });
-
+ 
 
 router.get('/logout', (req, res) => {
     req.session = null;
