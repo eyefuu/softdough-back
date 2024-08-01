@@ -121,7 +121,7 @@ const isUserOrder = (req, res, next) => {
 };
 
 const isAdminUserOrder = (req, res, next) => {
-    if (req.session && (req.session.st_type === '0' || req.session.st_type === '1')) {
+    if (req.session && (req.session.st_type === '0' || req.session.st_type === '1' || req.session.st_type === 0 || req.session.st_type === 1)) {
         next(); // Allow to proceed to the next middleware or route handler
     } else {
         res.status(403).send('Access Forbidden'); // ส่งค่าสถานะ 403 Forbidden ถ้าไม่ใช่ order user

@@ -3,7 +3,6 @@ const connection = require("../connection");
 const router = express.Router();
 const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder, isAdminUserOrder } = require('../middleware')
 
-//ยังไม่เทส
 
 router.post('/addtype',(req, res, next) => {
     let type = req.body;
@@ -73,7 +72,7 @@ router.patch('/updatetype/:ept_id',(req, res, next) => {
 //     });
 // });
 
-router.post('/add', isAdminUserOrder, (req, res, next) => {
+router.post('/add',isAdminUserOrder, (req, res, next) => {
     let expensesData = req.body;
     const userId = req.session.st_id; // ดึง user_id จาก session
     console.log('Session:', req.session); // Check session data
@@ -83,8 +82,8 @@ router.post('/add', isAdminUserOrder, (req, res, next) => {
     }
 
     const query = `
-        INSERT INTO expenses (ep_sum, ep_note, ep_status, ept_id, ep_date, user_id)
-        VALUES (?, ?, ?, ?, ?, ?);
+        INSERT INTO expenses (ep_sum, ep_note, ep_status, ept_id, ep_date, user_id,deleted_at)
+        VALUES (?, ?, ?, ?, ?, ?,?);
     `;
     const values = [
         expensesData.ep_sum,
@@ -93,6 +92,7 @@ router.post('/add', isAdminUserOrder, (req, res, next) => {
         expensesData.ept_id,
         expensesData.ep_date,
         userId, // ใช้ user_id ที่ดึงจาก session
+        null
     ];
 
     connection.query(query, values, (err, results) => {
@@ -106,6 +106,98 @@ router.post('/add', isAdminUserOrder, (req, res, next) => {
 });
 
 
+router.get('/readall', (req, res, next) => {
+     // Example of how to handle authorization
+     console.log('Session data:', req.session); // Debug session data
+
+    var query = `
+    SELECT 
+        ep.*,
+        DATE_FORMAT(ep.ep_date, '%d-%m-%Y') AS ep_date,
+        FORMAT(ep.ep_sum, 0) AS ep_sum_formatted,
+        ept.ept_name AS ept_name,
+        st.st_name AS st_name
+    FROM 
+        expenses AS ep
+    JOIN 
+        expensesType AS ept ON ept.ept_id = ep.ept_id 
+    JOIN 
+        staff AS st ON st.st_id = ep.user_id
+    WHERE 
+        ep.deleted_at IS NULL and ep.ep_status = 2
+    ORDER BY ep.ep_date DESC ;
+        `
+    connection.query(query, (err, results) => {
+        if (!err) {
+            return res.status(200).json(results);
+        } else {
+            return res.status(500).json(err);
+        }
+    });
+})
+
+router.get('/readstatus', (req, res, next) => {
+    // Example of how to handle authorization
+    console.log('Session data:', req.session); // Debug session data
+
+   var query = `
+   SELECT 
+       ep.*,
+       DATE_FORMAT(ep.ep_date, '%d-%m-%Y') AS ep_date,
+       FORMAT(ep.ep_sum, 0) AS ep_sum_formatted,
+       ept.ept_name AS ept_name,
+       st.st_name AS st_name
+   FROM 
+       expenses AS ep
+   JOIN 
+       expensesType AS ept ON ept.ept_id = ep.ept_id 
+   JOIN 
+       staff AS st ON st.st_id = ep.user_id
+   WHERE 
+       ep.deleted_at IS NULL and ep.ep_status = 1;
+       `
+   connection.query(query, (err, results) => {
+       if (!err) {
+           return res.status(200).json(results);
+       } else {
+           return res.status(500).json(err);
+       }
+   });
+})
+
+//เปลี่ยนสเตตัส อนุมัติ 
+router.patch('/updateStatus/:id',(req, res, next) => {
+    const ep_id = req.params.id;
+
+    const Query = "UPDATE expenses SET ep_status = 2 WHERE ep_id  = ?";
+    connection.query(Query, [ep_id], (err, result) => {
+        if (err) {
+            console.error("MySQL Error", err);
+            return res.status(500).json({ message: "error", error: err });
+        }
+        res.status(200).json({ message: "expenses ep_status = 2" });
+
+    });
+});
+
+
+//ไม่อนุมัติ 
+router.patch('/deleted/:id', (req, res, next) => {
+    const ep_id = req.params.id;
+
+    const Query = "UPDATE expenses SET deleted_at = CURRENT_TIMESTAMP WHERE ep_id  = ?";
+    connection.query(Query, [ep_id], (err, result) => {
+        if (err) {
+            console.error("MySQL Error", err);
+            return res.status(500).json({ message: "error", error: err });
+        }
+        res.status(200).json({ message: "expenses deleted" });
+
+    });
+});
+
+// สร้างฟังก์ชันคำนวณเอา
+//เหลือพวกคำนวณตั่งต่าง
 
 
 module.exports = router;

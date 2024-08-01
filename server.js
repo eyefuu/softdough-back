@@ -23,15 +23,14 @@ app.use(cookieSession({
 //ลองอันใหม่
 const corsOptions = {
     origin: 'http://localhost:3000',
-    credentials: true
+    credentials: true // Make sure to allow credentials
 };
-
 app.use(cors(corsOptions));
+
 
 
 const ownerRoute = require('./routes/owner')
 const staffRoute = require('./routes/staff')
-
 // const {Updateqtystock,router:ingredientRoute} = require('./routes/ingredient')
 const ingredientRoute = require('./routes/ingredient')
 const productRoute = require('./routes/product')
@@ -39,6 +38,8 @@ const salesmenuRoute = require('./routes/salesmenu')
 const productionRoute = require('./routes/production')
 const loginRoute = require('./routes/login')
 const expensesRoute = require('./routes/expenses')
+const promotionRoute = require('./routes/promotion')
+const settingRoute = require('./routes/setting')
 
 // const { ifLoggedIn,ifNotLoggedIn, router: loginRoute } = require('./routes/login');
 
@@ -50,6 +51,9 @@ app.use('/salesmenu',salesmenuRoute)
 app.use('/production',productionRoute)
 app.use('/login',loginRoute)
 app.use('/expenses',expensesRoute)
+app.use('/promotion',promotionRoute)
+app.use('/setting',settingRoute)
+
 
 // Updateqtystock();
 

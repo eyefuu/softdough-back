@@ -118,16 +118,26 @@ router.post('/add', (req, res, next) => {
 //   });
 // });
 
-router.get('/read',isAdmin, (req, res, next) => {
-  var query = 'select *from staff'
+// router.get('/read',isAdmin, (req, res, next) => {
+//   var query = 'select *from staff'
+//   connection.query(query, (err, results) => {
+//     if (!err) {
+//       return res.status(200).json(results);
+//     } else {
+//       return res.status(500).json(err);
+//     }
+//   });
+// })
+router.get('/read', isAdmin, (req, res) => {
+  const query = 'SELECT * FROM staff';
   connection.query(query, (err, results) => {
-    if (!err) {
+      if (err) {
+          console.error('Database error:', err); // Log the error for debugging
+          return res.status(500).json({ error: err.message });
+      }
       return res.status(200).json(results);
-    } else {
-      return res.status(500).json(err);
-    }
   });
-})
+});
 
 router.get('/read/:id',isAdmin, (req, res, next) => {
   const st_id = req.params.id;

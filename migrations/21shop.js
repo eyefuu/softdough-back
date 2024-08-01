@@ -1,40 +1,33 @@
 'use strict';
 module.exports = {
     async up(queryInterface, Sequelize) {
-        await queryInterface.createTable('ingredient_Used_Pro', {
-            induP_id: {
+        await queryInterface.createTable('shop', {
+            sh_id: {
                 allowNull: false,
                 autoIncrement: true,
                 primaryKey: true,
                 type: Sequelize.INTEGER
             },
-            pdod_id: {
-                type: Sequelize.INTEGER,
-                allowNull: false,
-                references: {
-                    model: 'productionOrderdetail',
-                    key: 'pdod_id'
-                }
+            sh_name: {
+                type: Sequelize.STRING
             },
-            indlde_id: {
-                type: Sequelize.INTEGER,
-                allowNull: false,
-                references: {
-                    model: 'ingredient_lot_detail',
-                    key: 'indlde_id'
-                }
+            sh_address: {
+                type: Sequelize.STRING
             },
-            qty_used_sum: {
-                type: Sequelize.INTEGER
+            sh_tel: {
+                type: Sequelize.STRING(10)
             },
-            status: {
-                type: Sequelize.STRING(1)
+            sh_province: {
+                type: Sequelize.STRING
             },
-            scrap: {
-                type: Sequelize.INTEGER
+            sh_district: {
+                type: Sequelize.STRING
             },
-            qtyusesum: {
-                type: Sequelize.INTEGER
+            sh_ampher: {
+                type: Sequelize.STRING
+            },
+            sh_zipcode: {
+                type: Sequelize.STRING
             },
             created_at: {
                 allowNull: false,
@@ -51,10 +44,11 @@ module.exports = {
                 allowNull: true,
                 type: Sequelize.DATE,
                 defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
-            }            
+            }
+
         });
     },
     async down(queryInterface, Sequelize) {
-        await queryInterface.dropTable('ingredient_Used_Pro');
+        await queryInterface.dropTable('shop');
     }
 };
