@@ -48,9 +48,12 @@ router.post('/login', ifLoggedIn, [
                             console.log(req.session)
                         } else if (req.session.st_type === '1') {
                             res.status(200).json({ message: "Successful production login" });
+                            console.log(req.session)
 
                         } else if (req.session.st_type === '2') {
                             res.status(200).json({ message: "Successful order login" });
+                            console.log(req.session)
+
                         } else {
                             // Send "Successful login" message for API JSON testing
                             res.json({ message: "Successful login" });

@@ -233,7 +233,7 @@ const Updateqtystock = async () => {
         `;
 
         const [results] = await connection.promise().query(query);
-        
+
         const updateQuery = "UPDATE ingredient SET ind_stock = ?, status = ? WHERE ind_id = ?";
         const updatePromises = results.map(item => {
             const newStock = item.ind_stock;
@@ -1631,6 +1631,7 @@ router.patch('/editData/:indl_id', isAdmin, (req, res, next) => {
 //30-06 ลองลบตารางเทสใหม่ status =1 หัก 3 ล็อตเหมือนจะถูก
 //หรือเปลี่ยนเป็นapiใช้คำนวณเก็บล็อตไหนๆ แต่เวลาหักใช้ fuction
 //30-06 เหมือนจะคำนวณถูกแล้วลองกรณีใช้ 4 ล็อต ทำแบบเดิมเพราะเผื่อคำนวณต้นทุน 
+
 //เพิ่มวัตถุดิบที่ใช้อื่นๆ
 router.post('/addUseIngrediantnew', (req, res, next) => {
     const ingredient_Used = req.body.ingredient_Used;
@@ -2033,10 +2034,87 @@ router.get('/addUseIngrediantLotpro/:pdo_id', (req, res, next) => {
         res.status(200).json({ finalResults: finalResults });
     });
 
-
-
-
 });
+
+//detailLotused ยัง
+router.get('/readdetailLotpro/:pdo_id', (req, res, next) => {
+    const pdo_id = req.params.pdo_id;
+
+    const query = `
+    SELECT 
+        pdo.pdo_id, 
+        iup.*, 
+        iud.*, 
+        pdod.*, 
+        ind.*
+    FROM 
+        ingredient_Used_Pro as iup
+    JOIN 
+        ingredient_Used_detail as iud ON iup.indlde_id = iud.indlde_id
+    JOIN 
+        productionOrderdetail as pdod ON iup.pdod_id = pdod.pdod_id	
+    JOIN 
+        productionOrder as pdo ON pdo.pdo_id = pdod.pdo_id	
+    JOIN 
+        ingredient as ind ON ind.ind_id = iud.ind_id	
+    WHERE 
+        pdo.pdo_id = ?;
+    `;
+
+    connection.query(query, [pdo_id], (err, results) => {
+        if (err) {
+            console.error("MySQL Query Error:", err);
+            return res.status(500).json({ error: "Database query error" });
+        }
+
+        // Group results by pdo_id
+        const groupedResults = results.reduce((acc, item) => {
+            if (!acc[item.pdo_id]) {
+                acc[item.pdo_id] = {
+                    pdo_id: item.pdo_id,
+                    productionOrderdetails: [],
+                };
+            }
+
+            const existingPdod = acc[item.pdo_id].productionOrderdetails.find(pdod => pdod.pdod_id === item.pdod_id);
+
+            if (existingPdod) {
+                // Add ingredient_Used_Pro to existing productionOrderdetail
+                existingPdod.ingredient_Used_Pro.push({
+                    qty_used_sum: item.qty_used_sum,
+                    scrap: item.scrap,
+                    qtyusesum: item.qtyusesum,
+                    ind_id: item.ind_id,
+                    ind_name: item.ind_name,
+                    qty: item.qty
+                });
+            } else {
+                // Create a new productionOrderdetail entry
+                acc[item.pdo_id].productionOrderdetails.push({
+                    pdod_id: item.pdod_id,
+                    pdod_qty: item.pdod_qty,
+                    ingredient_Used_Pro: [{
+                        qty_used_sum: item.qty_used_sum,
+                        scrap: item.scrap,
+                        qtyusesum: item.qtyusesum,
+                        ind_id: item.ind_id,
+                        ind_name: item.ind_name,
+                        qty: item.qty
+                    }]
+                });
+            }
+
+            return acc;
+        }, {});
+
+        // Convert the groupedResults object to an array
+        const formattedResults = Object.values(groupedResults);
+
+        return res.status(200).json(formattedResults);
+    });
+});
+
+
 //แก้ไขรายละเอียดวัตถุดิบที่ใช้ตามล็อต เปลี่ยนไปแก้ไขตรง ui แล้วส่งมาเพิ่มทีเดียว
 //เพิ่มตามล้อต
 //เพิ่มได้แล้วยังไม่เช็คคำนวณ
