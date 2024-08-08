@@ -84,17 +84,6 @@ router.get('/readdis/:id', (req, res, next) => {
 
 
 
-router.get('/readfree', (req, res, next) => {
-    var query = 'select *,DATE_FORMAT(discount.datestart, "%d-%m-%Y") AS datestart,DATE_FORMAT(discount.dateend, "%d-%m-%Y") AS dateend from discount'
-    connection.query(query, (err, results) => {
-        if (!err) {
-            return res.status(200).json(results);
-        } else {
-            return res.status(500).json(err);
-        }
-    });
-})
-
   //addpro free
 //   router.post('/addfree', (req, res, next) => {
 //     // const ingredient_lot = req.body;
@@ -160,14 +149,19 @@ router.post('/addfree', (req, res, next) => {
                 });
             }
 
-            const pmd_id = results.insertId;
+            const pm_id = results.insertId;
 
-            const values = promotiondetail.map(detail => [
-                pmd_id, // Use the inserted pm_id
-                detail.smbuy_id,
-                detail.smfree_id,
-                null // Set deleted_at to null
-            ]);
+            // Flatten the arrays into pairs
+            const values = promotiondetail.flatMap(detail => 
+                detail.smbuy_id.flatMap(smbuy_id => 
+                    detail.smfree_id.map(smfree_id => [
+                        pm_id,
+                        smbuy_id,
+                        smfree_id,
+                        null
+                    ])
+                )
+            );
 
             const detailQuery = `
                 INSERT INTO promotiondetail (pm_id, smbuy_id, smfree_id, deleted_at) 
@@ -191,13 +185,149 @@ router.post('/addfree', (req, res, next) => {
                         });
                     }
 
-                    return res.status(200).json({ message: "success", pmd_id });
+                    return res.status(200).json({ message: "success", pm_id });
                 });
             });
         });
     });
 });
+;
 
+
+
+
+router.get('/readfree', (req, res, next) => {
+    const query = `
+    SELECT 
+        p.pm_id,
+        p.pm_name,
+        DATE_FORMAT(p.pm_datestart, '%Y-%m-%d') AS pm_datestart,
+        DATE_FORMAT(p.pm_dateend, '%Y-%m-%d') AS pm_dateend,
+        pd.pmd_id,
+        pd.smbuy_id,
+        pd.smfree_id,
+        smbuy.sm_name AS smbuy_idnamet,
+        smfree.sm_name AS smfree_idnamet,
+        smbuytype.smt_name AS smtbuy_idnamet,
+        smfreetype.smt_name AS smtfree_idnamet
+    FROM 
+        promotion p
+    JOIN 
+        promotiondetail pd ON p.pm_id = pd.pm_id
+    JOIN 
+        salesMenu smbuy ON pd.smbuy_id = smbuy.sm_id
+    JOIN 
+        salesMenu smfree ON pd.smfree_id = smfree.sm_id
+    JOIN 
+        salesMenuType smbuytype ON smbuy.smt_id = smbuytype.smt_id
+    JOIN 
+        salesMenuType smfreetype ON smfree.smt_id = smfreetype.smt_id;
+
+    `;
+
+    connection.query(query, (err, results) => {
+        if (err) {
+            return res.status(500).json(err);
+        }
+
+        // Group by pm_id
+        const groupedResults = results.reduce((acc, item) => {
+            if (!acc[item.pm_id]) {
+                acc[item.pm_id] = {
+                    pm_id: item.pm_id,
+                    pm_name: item.pm_name,
+                    pm_datestart: item.pm_datestart,
+                    pm_dateend: item.pm_dateend,
+                    detail: []
+                };
+            }
+
+            acc[item.pm_id].detail.push({
+                smbuy_id: item.smbuy_id,
+                smfree_id: item.smfree_id,
+                smbuy_idnamet: item.smbuy_idnamet,
+                smfree_idnamet: item.smfree_idnamet,
+                smbuytype: item.smtbuy_idnamet,
+                smfreetype: item.smtfree_idnamet
+            });
+
+            return acc;
+        }, {});
+
+        // Convert the groupedResults object to an array
+        const formattedResults = Object.values(groupedResults);
+
+        return res.status(200).json(formattedResults);
+    });
+});
+
+router.get('/readfreedetail/:pm_id', async (req, res, next) => {
+    const pm_id = Number(req.params.pm_id);
+
+    const query = `
+    SELECT 
+        p.pm_id,
+        p.pm_name,
+        DATE_FORMAT(p.pm_datestart, '%Y-%m-%d') AS pm_datestart,
+        DATE_FORMAT(p.pm_dateend, '%Y-%m-%d') AS pm_dateend,
+        pd.pmd_id,
+        pd.smbuy_id,
+        pd.smfree_id,
+        smbuy.sm_name AS smbuy_idnamet,
+        smfree.sm_name AS smfree_idnamet,
+        smbuytype.smt_name AS smtbuy_idnamet,
+        smfreetype.smt_name AS smtfree_idnamet
+    FROM 
+        promotion p
+    JOIN 
+        promotiondetail pd ON p.pm_id = pd.pm_id
+    JOIN 
+        salesMenu smbuy ON pd.smbuy_id = smbuy.sm_id
+    JOIN 
+        salesMenu smfree ON pd.smfree_id = smfree.sm_id
+    JOIN 
+        salesMenuType smbuytype ON smbuy.smt_id = smbuytype.smt_id
+    JOIN 
+        salesMenuType smfreetype ON smfree.smt_id = smfreetype.smt_id
+    WHERE 
+        p.pm_id = ?;  -- Use parameterized query for security
+    `;
+
+    connection.query(query, [pm_id], (err, results) => {
+        if (err) {
+            return res.status(500).json(err);
+        }
+
+        // Group by pm_id
+        const groupedResults = results.reduce((acc, item) => {
+            if (!acc[item.pm_id]) {
+                acc[item.pm_id] = {
+                    pm_id: item.pm_id,
+                    pm_name: item.pm_name,
+                    pm_datestart: item.pm_datestart,
+                    pm_dateend: item.pm_dateend,
+                    detail: []
+                };
+            }
+
+            acc[item.pm_id].detail.push({
+                smbuy_id: item.smbuy_id,
+                smfree_id: item.smfree_id,
+                smbuy_idnamet: item.smbuy_idnamet,
+                smfree_idnamet: item.smfree_idnamet,
+                smbuytype: item.smtbuy_idnamet,
+                smfreetype: item.smtfree_idnamet
+            });
+
+            return acc;
+        }, {});
+
+        // Convert the groupedResults object to an array
+        const formattedResults = Object.values(groupedResults);
+
+        return res.status(200).json(formattedResults);
+    });
+});
 
 
 

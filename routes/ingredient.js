@@ -3,6 +3,62 @@ const connection = require("../connection");
 const router = express.Router();
 const { isALL, ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder, isAdminUserOrder, } = require('../middleware')
 
+
+
+//เผื่อadd unit เพิ่มเติม
+// router.post('/unit', (req, res, next) => {
+//     let unit = req.body;
+//     query = "insert into unit (un_name,type) values(?,'1')";
+//     connection.query(query, [unit.un_name, unit.type], (err, results) => {
+//         if (!err) {
+//             return res.status(200).json({ message: "success" });
+//         } else {
+//             console.error("MySQL Error:", err);
+//             return res.status(500).json({ message: "error", error: err });
+//         }
+//     });
+// })
+router.post('/unit', (req, res, next) => {
+    const units = req.body;
+
+    // Prepare the query with placeholders
+    const query = "INSERT INTO unit (un_name, type) VALUES (?, ?)";
+
+    // Combine all the insertion tasks into a single array of promises
+    const insertionPromises = [];
+
+    // Loop through each type in the units object
+    for (const type in units) {
+        if (units.hasOwnProperty(type)) {
+            const details = units[type].detail;
+
+            // Loop through each un_name in the details array
+            details.forEach(un_name => {
+                // Create a promise for each insertion and push it into the array
+                insertionPromises.push(new Promise((resolve, reject) => {
+                    connection.query(query, [un_name, type], (err, results) => {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve(results);
+                        }
+                    });
+                }));
+            });
+        }
+    }
+
+    // Execute all insertions in parallel and wait for them to complete
+    Promise.all(insertionPromises)
+        .then(() => {
+            return res.status(200).json({ message: "success" });
+        })
+        .catch(err => {
+            console.error("MySQL Error:", err);
+            return res.status(500).json({ message: "error", error: err });
+        });
+});
+
 // ------------------------------------------วัตถุดิบ-----------------------------------------
 //เพิ่มวัตถุดิบ
 router.post('/add', (req, res, next) => {
@@ -224,12 +280,12 @@ router.get('/read/:id', isAdminUserOrder, (req, res, next) => {
     const ind_id = req.params.id;
     var query = `
     SELECT ingredient.*, 
-    unit1.un_name AS un_purchased_name,
-    unit2.un_name AS un_ind_name 
-FROM ingredient 
-LEFT JOIN unit AS unit1 ON ingredient.un_purchased = unit1.un_id
-LEFT JOIN unit AS unit2 ON ingredient.un_ind = unit2.un_id
-WHERE ingredient.ind_id = ?;  -- Fixed the alias here
+        unit1.un_name AS un_purchased_name,
+        unit2.un_name AS un_ind_name 
+    FROM ingredient 
+    LEFT JOIN unit AS unit1 ON ingredient.un_purchased = unit1.un_id
+    LEFT JOIN unit AS unit2 ON ingredient.un_ind = unit2.un_id
+    WHERE ingredient.ind_id = ?;  -- Fixed the alias here
     `;
 
     connection.query(query, [ind_id], (err, results) => {
@@ -247,7 +303,7 @@ WHERE ingredient.ind_id = ?;  -- Fixed the alias here
 
 //หน่วยวัตถุดิบ
 // ให้มีtype of unit
-router.get('/unit', isALL, (req, res, next) => {
+router.get('/unit', (req, res, next) => {
     var query = 'select *from unit where type="1"'
     connection.query(query, (err, results) => {
         if (!err) {
@@ -260,19 +316,6 @@ router.get('/unit', isALL, (req, res, next) => {
 
 
 
-//เผื่อadd unit เพิ่มเติม
-// router.post('/unit', (req, res, next) => {
-//     let unit = req.body;
-//     query = "insert into unit (un_name,type) values(?,'1')";
-//     connection.query(query, [unit.un_name, unit.type], (err, results) => {
-//         if (!err) {
-//             return res.status(200).json({ message: "success" });
-//         } else {
-//             console.error("MySQL Error:", err);
-//             return res.status(500).json({ message: "error", error: err });
-//         }
-//     });
-// })
 
 // แก้ไขวัตถุดิบ
 router.patch('/update/:id', isAdmin, (req, res, next) => {
@@ -2280,7 +2323,7 @@ router.get('/usedIngredients', (req, res, next) => {
         UNION ALL
         
         SELECT 
-            CONCAT('PD', LPAD(induP.pdod_id, 7, '0')) AS id,
+            CONCAT('PD', LPAD(pdod.pdo_id, 7, '0')) AS id,
             induP.status,
             NULL AS note,
             MAX(induP.created_at) AS created_at,
@@ -2289,6 +2332,7 @@ router.get('/usedIngredients', (req, res, next) => {
             'production' AS checkk
         FROM 
             ingredient_Used_Pro AS induP
+            join productionOrderdetail as pdod on pdod.pdod_id = induP.pdod_id
         WHERE 
             induP.deleted_at IS NULL
         GROUP BY 
