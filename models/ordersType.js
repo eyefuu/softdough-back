@@ -10,7 +10,6 @@ module.exports = (sequelize, DataTypes) => {
     OrdersType.init({
         odt_name: DataTypes.STRING,
         odt_per: DataTypes.FLOAT,
-        odt_price: DataTypes.FLOAT,
 
     }, {
         sequelize,

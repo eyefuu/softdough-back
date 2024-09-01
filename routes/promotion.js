@@ -128,7 +128,7 @@ router.get('/readdis/:id', (req, res, next) => {
 
 // });
 
-//เพิ่ม transaction ยังไม่เทส
+//เพิ่ม transaction 
 router.post('/addfree', (req, res, next) => {
     const { pm_name, pm_datestart, pm_dateend, promotiondetail } = req.body;
 
@@ -192,9 +192,6 @@ router.post('/addfree', (req, res, next) => {
     });
 });
 ;
-
-
-
 
 router.get('/readfree', (req, res, next) => {
     const query = `
@@ -328,6 +325,97 @@ router.get('/readfreedetail/:pm_id', async (req, res, next) => {
         return res.status(200).json(formattedResults);
     });
 });
+
+// แก้ไข free ยังไม่เทส
+//ไม่ได้ค่าคุรน้า ไปถามใหม่แบบให้นับแถวที่มีของ idpm นั้น แล้วแก้ไขเลย เกินก็ลบ ขาดก็เพิ่ม
+// ตอนนี้มันลบไปเลย ไม่ใช่ sd แล้วลบหมดแอดใหม่เอา ซึ่งถ้าทำการขายน่าจะบ่ได้เด้อค่าเว้นแต่เก็บเพิ่มในออเดอร์เอา
+router.put('/updatefree', (req, res, next) => {
+    const { pm_id, pm_name, pm_datestart, pm_dateend, promotiondetail } = req.body;
+
+    // Start the transaction
+    connection.beginTransaction((err) => {
+        if (err) {
+            console.error("MySQL Error:", err);
+            return res.status(500).json({ message: "error", error: err });
+        }
+
+        // Update the promotion table
+        const updateQuery = `
+            UPDATE promotion 
+            SET pm_name = ?, pm_datestart = ?, pm_dateend = ? 
+            WHERE pm_id = ?
+        `;
+
+        connection.query(updateQuery, [pm_name, pm_datestart, pm_dateend, pm_id], (err, results) => {
+            if (err) {
+                return connection.rollback(() => {
+                    console.error("MySQL Error:", err);
+                    return res.status(500).json({ message: "error", error: err });
+                });
+            }
+
+            // Delete all old promotion details for the given pm_id
+            const deleteOldDetailsQuery = `
+                DELETE FROM promotiondetail 
+                WHERE pm_id = ?
+            `;
+
+            connection.query(deleteOldDetailsQuery, [pm_id], (err, results) => {
+                if (err) {
+                    return connection.rollback(() => {
+                        console.error("MySQL Error:", err);
+                        return res.status(500).json({ message: "error", error: err });
+                    });
+                }
+
+                // Prepare new details to insert
+                const newDetails = promotiondetail.flatMap(detail => 
+                    detail.smbuy_id.flatMap(smbuy_id => 
+                        detail.smfree_id.map(smfree_id => [
+                            pm_id,
+                            smbuy_id,
+                            smfree_id,
+                            null // Adding NULL for the deleted_at column
+                        ])
+                    )
+                );
+
+                // Insert the new details
+                const insertQuery = `
+                    INSERT INTO promotiondetail (pm_id, smbuy_id, smfree_id, deleted_at) 
+                    VALUES ?
+                `;
+
+                connection.query(insertQuery, [newDetails], (err, results) => {
+                    if (err) {
+                        return connection.rollback(() => {
+                            console.error("MySQL Error:", err);
+                            return res.status(500).json({ message: "error", error: err });
+                        });
+                    }
+
+                    // Commit the transaction
+                    connection.commit((err) => {
+                        if (err) {
+                            return connection.rollback(() => {
+                                console.error("MySQL Error:", err);
+                                return res.status(500).json({ message: "error", error: err });
+                            });
+                        }
+
+                        return res.status(200).json({ message: "success", pm_id });
+                    });
+                });
+            });
+        });
+    });
+});
+
+
+
+
+
+
 
 
 

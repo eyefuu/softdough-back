@@ -4,19 +4,14 @@ module.exports = {
         await queryInterface.createTable('ordersType', {
             odt_id: {
                 allowNull: false,
-                autoIncrement: true,
                 primaryKey: true,
                 type: Sequelize.INTEGER
-            },
+            },            
             odt_name: {
                 type: Sequelize.STRING,
                 allowNull: false
             },
             odt_per:{
-                type: Sequelize.FLOAT,
-                allowNull: false
-            },
-            odt_price:{
                 type: Sequelize.FLOAT,
                 allowNull: false
             },
