@@ -8,8 +8,8 @@ router.post('/adddis', (req, res, next) => {
     console.log('Body:', req.body); // Check request body
 
     const query = `
-        INSERT INTO discount (dc_name, dc_detail, dc_diccountprice, datestart, dateend,deleted_at)
-        VALUES (?, ?, ?, ?, ?,?);
+        INSERT INTO discount (dc_name, dc_detail, dc_diccountprice, datestart, dateend,minimum,deleted_at)
+        VALUES (?, ?, ?, ?, ?,?,?);
     `;
     const values = [
         Data.dc_name,
@@ -17,6 +17,7 @@ router.post('/adddis', (req, res, next) => {
         Data.dc_diccountprice,
         Data.datestart,
         Data.dateend,
+        Data.minimum,
         null
     ];
 
@@ -67,8 +68,8 @@ router.get('/readdis/:id', (req, res, next) => {
     const discount = req.body;
   
     
-      var query = "UPDATE discount SET dc_name=?, dc_detail=?, dc_diccountprice=?, datestart=?, dateend=? WHERE dc_id=?";
-      connection.query(query, [discount.dc_name, discount.dc_detail, discount.dc_diccountprice, discount.datestart, discount.dateend, dc_id], (err, results) => {
+      var query = "UPDATE discount SET dc_name=?, dc_detail=?, dc_diccountprice=?, datestart=?, dateend=? ,minimum=? ,updated_at=CURRENT_TIMESTAMP() WHERE dc_id=?";
+      connection.query(query, [discount.dc_name, discount.dc_detail, discount.dc_diccountprice, discount.datestart, discount.dateend, discount.minimum,dc_id], (err, results) => {
         if (!err) {
           if (results.affectedRows === 0) {
             console.error(err);

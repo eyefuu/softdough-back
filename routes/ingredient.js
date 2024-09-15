@@ -4,6 +4,9 @@ const router = express.Router();
 const { isALL, ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder, isAdminUserOrder, } = require('../middleware')
 
 
+// const { checkMinimumIngredient } = require('../routes/notification');
+const { checkMinimumIngredient, queryAsync } = require('../routes/notification');
+
 
 //เผื่อadd unit เพิ่มเติม
 // router.post('/unit', (req, res, next) => {
@@ -153,7 +156,8 @@ router.get('/readall', (req, res, next) => {
         (SUM(ingredient_lot_detail.qty_stock) DIV ingredient.qty_per_unit) AS ind_stock,        unit1.un_name AS un_purchased_name,
         unit2.un_name AS un_ind_name ,
         ingredient.status,
-        ingredient.qtyminimum
+        ingredient.qtyminimum,
+        ingredient_lot_detail.date_exp as date_exp
     FROM 
         ingredient 
     LEFT JOIN 
@@ -168,6 +172,7 @@ router.get('/readall', (req, res, next) => {
         ingredient_lot.status = 2
     AND 
         ingredient_lot_detail.deleted_at IS NULL
+    AND ingredient_lot_detail.date_exp > NOW()
     
     GROUP BY 
         ingredient_lot_detail.ind_id
@@ -228,6 +233,8 @@ const Updateqtystock = async () => {
                 ingredient_lot.status = 2
             AND 
                 ingredient_lot_detail.deleted_at IS NULL
+            and
+                ingredient_lot_detail.date_exp > NOW()
             GROUP BY 
                 ingredient_lot_detail.ind_id
         `;
@@ -1632,7 +1639,7 @@ router.patch('/editData/:indl_id', isAdmin, (req, res, next) => {
 //หรือเปลี่ยนเป็นapiใช้คำนวณเก็บล็อตไหนๆ แต่เวลาหักใช้ fuction
 //30-06 เหมือนจะคำนวณถูกแล้วลองกรณีใช้ 4 ล็อต ทำแบบเดิมเพราะเผื่อคำนวณต้นทุน 
 
-//เพิ่มวัตถุดิบที่ใช้อื่นๆ
+//เพิ่มวัตถุดิบที่ใช้อื่นๆ ยังไม่ใส่ส่วนแจ้งเตือน 
 router.post('/addUseIngrediantnew', (req, res, next) => {
     const ingredient_Used = req.body.ingredient_Used;
     const ingredient_Used_detail = req.body.ingredient_Used_detail;
@@ -1861,10 +1868,12 @@ router.post('/addUseIngrediantnew', (req, res, next) => {
                                     }
 
                                     console.log("Updated data:", results);
+                                            
                                 });
                             });
 
                         }
+                        
                     }
 
                 })
@@ -1874,8 +1883,12 @@ router.post('/addUseIngrediantnew', (req, res, next) => {
                 res.status(200).json({ message: "success" });
             }
 
+            //หักสต๊อก
+            Updateqtystock()
 
-
+            //เพิ่มในส่วนเช็คสต๊อก เพื่อแจ้งเตือน
+            checkMinimumIngredient()
+            
 
         } else {
             console.error("MySQL Error:", err);
@@ -1883,6 +1896,129 @@ router.post('/addUseIngrediantnew', (req, res, next) => {
         }
     });
 });
+
+// //เพิ่มวัตถุดิบที่ใช้อื่นๆ ลองปรับเพื่อการแจ้งเตือน
+// router.post('/addUseIngrediantnew', async (req, res, next) => {
+//     const ingredient_Used = req.body.ingredient_Used;
+//     const ingredient_Used_detail = req.body.ingredient_Used_detail;
+
+//     try {
+//         const query = "INSERT INTO ingredient_Used (status, note) VALUES (?, ?)";
+//         const result = await queryAsync(query, [ingredient_Used.status, ingredient_Used.note]);
+
+//         const indU_id = result.insertId;
+//         const detailall = [];
+//         const upind = [];
+
+//         for (const detail of ingredient_Used_detail) {
+//             const query = `
+//                 SELECT indlde_id, qty_stock, qty_per_unit
+//                 FROM ingredient
+//                 JOIN ingredient_lot_detail ON ingredient_lot_detail.ind_id = ingredient.ind_id
+//                 JOIN ingredient_lot ON ingredient_lot.indl_id = ingredient_lot_detail.indl_id
+//                 WHERE ingredient_lot_detail.ind_id = ? AND ingredient_lot_detail.date_exp > NOW() AND qty_stock > 0 AND ingredient_lot.status="2"
+//                 ORDER BY ingredient_lot_detail.date_exp ASC;
+//             `;
+//             const results = await queryAsync(query, [detail.ind_id]);
+
+//             let stopLoop = false;
+//             let new_qty_stock = 1;
+
+//             for (const result of results) {
+//                 if (!stopLoop) {
+//                     const qty_per_unit = result.qty_per_unit;
+//                     const qty_used_sum = detail.qty_used_sum;
+//                     const scrap = detail.scrap;
+//                     const total_quantity_used = qty_used_sum * qty_per_unit + scrap;
+//                     const qty_stock = result.qty_stock;
+
+//                     new_qty_stock = qty_stock - total_quantity_used;
+
+//                     if (new_qty_stock < 0) {
+//                         const new_qty_stockup = total_quantity_used + new_qty_stock;
+
+//                         const itemIn = {
+//                             indU_id: indU_id,
+//                             indlde_id: result.indlde_id,
+//                             qty_used_sum: detail.qty_used_sum,
+//                             scrap: detail.scrap,
+//                             qtyusesum: new_qty_stockup,
+//                             deleted_at: null
+//                         };
+//                         detailall.push(itemIn);
+
+//                         if (ingredient_Used.status == "2") {
+//                             const itemUp = {
+//                                 indlde_id: result.indlde_id,
+//                                 qty_stock: 0
+//                             };
+//                             upind.push(itemUp);
+//                         }
+//                     } else {
+//                         const itemIn = {
+//                             indU_id: indU_id,
+//                             indlde_id: result.indlde_id,
+//                             qty_used_sum: detail.qty_used_sum,
+//                             scrap: detail.scrap,
+//                             qtyusesum: total_quantity_used,
+//                             deleted_at: null
+//                         };
+//                         detailall.push(itemIn);
+
+//                         if (ingredient_Used.status == "2") {
+//                             const itemUp = {
+//                                 indlde_id: result.indlde_id,
+//                                 qty_stock: new_qty_stock,
+//                             };
+//                             upind.push(itemUp);
+//                         }
+//                         stopLoop = true;
+//                     }
+//                 } else {
+//                     stopLoop = true;
+//                 }
+//             }
+//         }
+
+//         if (detailall.length > 0) {
+//             const insertDetailQuery = "INSERT INTO ingredient_Used_detail (indU_id, indlde_id, qty_used_sum, scrap, qtyusesum, deleted_at) VALUES ?";
+//             const detailValues = detailall.map(item => [item.indU_id, item.indlde_id, item.qty_used_sum, item.scrap, item.qtyusesum, item.deleted_at]);
+
+//             await queryAsync(insertDetailQuery, [detailValues]);
+//         }
+
+//         if (ingredient_Used.status == "2" || 2) {
+//             if (upind.length > 0) {
+//                 const updateQuery = "UPDATE ingredient_lot_detail SET qty_stock = ? WHERE indlde_id = ?";
+//                 for (const item of upind) {
+//                     const updateValues = [item.qty_stock, item.indlde_id]
+//                     await queryAsync(updateQuery, updateValues);
+//                 }
+//             }
+//         }
+
+//         // Check stock levels and emit notifications
+//         const lowStockIngredients = await checkMinimumIngredient();
+//         if (lowStockIngredients.length > 0) {
+//             const staffQuery = `
+//                 SELECT staff_id FROM staff WHERE st_type = 0 OR st_type = 1
+//             `;
+//             const staffResults = await queryAsync(staffQuery);
+//             const staffIds = staffResults.map(staff => staff.staff_id);
+
+//             const notificationValues = lowStockIngredients.map(ingredient => [ingredient.ind_id, JSON.stringify(ingredient)]);
+//             await queryAsync('INSERT INTO notification (user_id, message, status, created_at) VALUES ?', [notificationValues]);
+
+//             io.emit('lowStockNotification', lowStockIngredients);
+//         }
+
+//         res.status(200).json({ message: "Ingredient used and details updated successfully." });
+//     } catch (error) {
+//         console.error('Error processing ingredient usage:', error);
+//         res.status(500).json({ message: "Error", error });
+//     }
+// });
+
 
 //เพิ่มวัตถุดิบที่ใช้ตาม ล็อตผลิต
 //กำลังคิดว่ายังไม่เพิ่มลง DB ส่งแบบ json ไปให้ แล้วจะสามารถแก้ไขข้อมูล json นั้นผ่านหน้าเว็บได้มั้ย แล้วเพิ่มลง DB เมื่อกดยืนยัน โดยเอาจาก json ที่ส่งไป แต่ตัวที่ไม่โชว์จะทำได้มั้ย
@@ -2378,6 +2514,9 @@ router.post('/addUseIngrediantLot', (req, res, next) => {
     // if (!err) {
     res.status(200).json({ message: "success" });
     // }
+
+    //เพิ่มในส่วนเช็คสต๊อก เพื่อแจ้งเตือน
+    checkMinimumIngredient()
 
 })
 //ดูวัตถุดิบที่ใช้all
@@ -3051,6 +3190,10 @@ router.patch('/updateStatus/:id', (req, res, next) => {
             //////////////////////////////
 
             res.status(200).json({ message: "Status updated and details fetched successfully", data: usedtocalculate, indUd_ids: indUd_ids });
+
+            //เพิ่มในส่วนเช็คสต๊อก เพื่อแจ้งเตือน
+            checkMinimumIngredient()
+            
         });
     });
 });
