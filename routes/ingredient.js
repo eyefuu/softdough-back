@@ -3,9 +3,20 @@ const connection = require("../connection");
 const router = express.Router();
 const { isALL, ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder, isAdminUserOrder, } = require('../middleware')
 
-
+//แจ้งเตือน
+const http = require('http');
+const socketIo = require('socket.io');
+const server = http.createServer(express);
+const io = socketIo(server, {
+    cors: {
+        origin: 'http://localhost:3000',
+        methods: ['GET', 'POST'],
+        allowedHeaders: ['Content-Type'],
+        credentials: true
+    }
+});
 // const { checkMinimumIngredient } = require('../routes/notification');
-const { checkMinimumIngredient, queryAsync } = require('../routes/notification');
+// const { checkMinimumIngredient } = require('../routes/notification');
 
 
 //เผื่อadd unit เพิ่มเติม
@@ -255,6 +266,8 @@ const Updateqtystock = async () => {
         await Promise.all(updatePromises);
 
         console.log("All stock quantities updated successfully");
+        // console.log("checkMinimumIngredient in Updateqtystock");
+        
     } catch (error) {
         console.error('MySQL Error:', error);
     }
@@ -1868,12 +1881,10 @@ router.post('/addUseIngrediantnew', (req, res, next) => {
                                     }
 
                                     console.log("Updated data:", results);
-                                            
                                 });
                             });
 
                         }
-                        
                     }
 
                 })
@@ -1883,13 +1894,11 @@ router.post('/addUseIngrediantnew', (req, res, next) => {
                 res.status(200).json({ message: "success" });
             }
 
-            //หักสต๊อก
-            Updateqtystock()
+            //  :ไม่ตรงอะ งง ไม่แน่ใจว่าไม่ตรงตรงไหน
+            Updateqtystock();
 
-            //เพิ่มในส่วนเช็คสต๊อก เพื่อแจ้งเตือน
-            checkMinimumIngredient()
-            
-
+            const { checkMinimumIngredient } = require('../routes/notification');
+            checkMinimumIngredient(io);
         } else {
             console.error("MySQL Error:", err);
             return res.status(500).json({ message: "error", error: err });
@@ -2470,7 +2479,6 @@ router.post('/addUseIngrediantLot', (req, res, next) => {
 
             }
 
-
             if (upind.length > 0) {
 
                 const updateQuery = " UPDATE ingredient_lot_detail SET qty_stock = ? WHERE indlde_id = ?";
@@ -2503,24 +2511,24 @@ router.post('/addUseIngrediantLot', (req, res, next) => {
                     console.log("Updated pdo_id data:", results);
                 });
 
-
-
             }
-
+            //เพิ่มในส่วนเช็คสต๊อก เพื่อแจ้งเตือน
+            // checkMinimumIngredient()
+            //import ภายใน
+        const { checkMinimumIngredient } = require('../routes/notification');
+        checkMinimumIngredient();
 
         })
-
     });
     // if (!err) {
     res.status(200).json({ message: "success" });
     // }
 
-    //เพิ่มในส่วนเช็คสต๊อก เพื่อแจ้งเตือน
-    checkMinimumIngredient()
+
 
 })
-//ดูวัตถุดิบที่ใช้all
 
+//ดูวัตถุดิบที่ใช้all
 router.get('/usedIngredients', (req, res, next) => {
     const query = `
     SELECT * FROM (
@@ -3193,7 +3201,7 @@ router.patch('/updateStatus/:id', (req, res, next) => {
 
             //เพิ่มในส่วนเช็คสต๊อก เพื่อแจ้งเตือน
             checkMinimumIngredient()
-            
+
         });
     });
 });
@@ -3491,4 +3499,9 @@ router.get('/ingredientlot/search', (req, res) => {
 
 
 
-module.exports = router;
+// module.exports = router;
+// module.exports.Updateqtystock = Updateqtystock;
+module.exports = {
+    router,
+    Updateqtystock
+}

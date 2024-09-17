@@ -155,7 +155,11 @@ const io = socketIo(server, {
     }
 });
 
-const { checkMinimumIngredient, queryAsync } = require('./routes/notification');
+// const { checkMinimumIngredient, queryAsync } = require('./routes/notification');
+const { checkMinimumIngredient } = require('./routes/notification');
+
+// ส่ง io ไปในฟังก์ชันนี้
+// checkMinimumIngredient(io);
 
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
@@ -168,14 +172,14 @@ io.on('connection', (socket) => {
             WHERE user_id LIKE ? AND (read_id IS NULL OR read_id NOT LIKE ?)
         `;
         const results = await queryAsync(query, [`%${userId}%`, `%${userId}%`]);
-        console.log(results,'results');
         return results;
     };
 
-    // เมื่อเชื่อมต่อสำเร็จ ให้ส่งจำนวนการแจ้งเตือนที่ยังไม่ได้อ่าน
     socket.on('getNotificationCount', async () => {
         const unreadNotifications = await getUnreadNotifications(userId);
+        // checkMinimumIngredient(io);
         socket.emit('notificationCount', unreadNotifications.length);
+        console.log('Notification count:', unreadNotifications.length);
     });
 
     socket.on('disconnect', () => {
@@ -186,7 +190,7 @@ io.on('connection', (socket) => {
 // Routes
 const ownerRoute = require('./routes/owner');
 const staffRoute = require('./routes/staff');
-const ingredientRoute = require('./routes/ingredient');
+const ingredientRouter = require('./routes/ingredient');
 const productRoute = require('./routes/product');
 const salesmenuRoute = require('./routes/salesmenu');
 const productionRoute = require('./routes/production');
@@ -194,11 +198,11 @@ const loginRoute = require('./routes/login');
 const expensesRoute = require('./routes/expenses');
 const promotionRoute = require('./routes/promotion');
 const settingRoute = require('./routes/setting');
-const notificationRoute = require('./routes/notification');
+const notificationRouter = require('./routes/notification');
 
 app.use('/owner', ownerRoute);
 app.use('/staff', staffRoute);
-app.use('/ingredient', ingredientRoute);
+app.use('/ingredient', ingredientRouter.router);
 app.use('/product', productRoute);
 app.use('/salesmenu', salesmenuRoute);
 app.use('/production', productionRoute);
@@ -206,10 +210,10 @@ app.use('/login', loginRoute);
 app.use('/expenses', expensesRoute);
 app.use('/promotion', promotionRoute);
 app.use('/setting', settingRoute);
-app.use('/notification', notificationRoute);
+app.use('/notification', notificationRouter.router);
 
 app.get("/", (req, res) => {
-    res.json({ message: "hello world!", pe: ["taeyong", "marklee", "jaemin"] });
+    res.json({ message: "hello world!" });
 });
 
 server.listen(PORT, () => {
