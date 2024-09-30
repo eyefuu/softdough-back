@@ -27,7 +27,7 @@
 //     //เพิ่มเติมตอน socket มีัญหาส่งไม่ไป
 //     methods: ['GET', 'POST'],
 //     allowedHeaders: ['Content-Type']
-  
+
 // };
 // app.use(cors(corsOptions));
 
@@ -119,21 +119,24 @@
 //ลองฝหม่ตอน socket
 const express = require("express");
 const http = require('http');
-const socketIo = require('socket.io');
 const cors = require("cors");
 const cookieSession = require('cookie-session');
+const connection = require("./connection");
 
 const app = express();
+const server = http.createServer(app);
+// const io = socketIo(server, { cors: { origin: 'http://localhost:3000', credentials: true } });
+
+
+  
 const PORT = 8080;
 
 // CORS settings
-const corsOptions = {
-    origin: 'http://localhost:3000',
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-    allowedHeaders: ['Content-Type']
-};
-app.use(cors(corsOptions));
+app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+
+// app.use(cors(corsOptions));
 
 // Cookie session settings
 app.use(cookieSession({
@@ -142,50 +145,13 @@ app.use(cookieSession({
     maxAge: 3600 * 1000 // 1 hour
 }));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
 
-const server = http.createServer(app);
-const io = socketIo(server, {
-    cors: {
-        origin: 'http://localhost:3000',
-        methods: ['GET', 'POST'],
-        allowedHeaders: ['Content-Type'],
-        credentials: true
-    }
-});
+const setupSocket = require('./socket'); // เรียกใช้ไฟล์ socket.js
+// setupSocket(server); // ตั้งค่า Socket.IO
+const io = setupSocket(server); // ตั้งค่า Socket.IO และเก็บค่า io ในตัวแปร
 
-// const { checkMinimumIngredient, queryAsync } = require('./routes/notification');
-const { checkMinimumIngredient } = require('./routes/notification');
-
-// ส่ง io ไปในฟังก์ชันนี้
-// checkMinimumIngredient(io);
-
-io.on('connection', (socket) => {
-    console.log('A user connected:', socket.id);
-
-    const userId = socket.handshake.query.userId;
-
-    const getUnreadNotifications = async (userId) => {
-        const query = `
-            SELECT * FROM notification
-            WHERE user_id LIKE ? AND (read_id IS NULL OR read_id NOT LIKE ?)
-        `;
-        const results = await queryAsync(query, [`%${userId}%`, `%${userId}%`]);
-        return results;
-    };
-
-    socket.on('getNotificationCount', async () => {
-        const unreadNotifications = await getUnreadNotifications(userId);
-        // checkMinimumIngredient(io);
-        socket.emit('notificationCount', unreadNotifications.length);
-        console.log('Notification count:', unreadNotifications.length);
-    });
-
-    socket.on('disconnect', () => {
-        console.log('User disconnected:', socket.id);
-    });
-});
+// ทำให้ `io` ใช้ได้ในทุกที่โดยการเก็บไว้ใน app.locals
+app.locals.io = io;
 
 // Routes
 const ownerRoute = require('./routes/owner');
