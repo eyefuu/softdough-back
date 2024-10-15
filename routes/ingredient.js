@@ -2301,7 +2301,8 @@ router.get('/addUseIngrediantLotpro/:pdo_id', (req, res, next) => {
         Object.entries(groupedResults).forEach(([pdod_id, rows]) => {
             rows.forEach(row => {
                 const Qx = row.ingredients_qty;
-                const N = row.qty;
+                //+-เกินเสีย
+                const N = (row.qty+row.over)-row.broken;
                 const M = row.produced_qty;
                 const qty_per_unit = row.qty_per_unit;
 
@@ -2312,6 +2313,10 @@ router.get('/addUseIngrediantLotpro/:pdo_id', (req, res, next) => {
 
                 finalResults.push({
                     pd_name: row.pd_name,
+                    qtypd_name:row.qty,
+                    qtybroken:row.broken,
+                    qtyover:row.over,
+                    resultqty:N,
                     pdod_id: parseInt(pdod_id, 10),
                     ind_name: row.ind_name,
                     ind_id: row.ind_id,
