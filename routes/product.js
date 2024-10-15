@@ -943,7 +943,7 @@ router.get('/pdset/:pd_id', async (req, res, next) => {
     }
 });
 
-router.get('/productsall',isAdmin,async (req, res, next) => {
+router.get('/productsall',async (req, res, next) => {
     try {
         var query = `SELECT pd.* , rc.* 
             FROM products pd 

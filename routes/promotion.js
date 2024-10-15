@@ -48,44 +48,44 @@ router.get('/readdis/:id', (req, res, next) => {
     DATE_FORMAT(datestart, '%Y-%m-%d') AS datestart,
     DATE_FORMAT(dateend, '%Y-%m-%d') AS dateend
      FROM discount WHERE dc_id = ?`;
-  
+
     connection.query(query, [id], (err, results) => {
-      if (!err) {
-        if (results.length > 0) {
-          return res.status(200).json(results[0]);
+        if (!err) {
+            if (results.length > 0) {
+                return res.status(200).json(results[0]);
+            } else {
+                return res.status(404).json({ message: "Staff not found" });
+            }
         } else {
-          return res.status(404).json({ message: "Staff not found" });
+            return res.status(500).json(err);
         }
-      } else {
-        return res.status(500).json(err);
-      }
     });
-  });
+});
 
 
-  router.patch('/update/:id' ,(req, res, next) => {
+router.patch('/update/:id', (req, res, next) => {
     const dc_id = req.params.id;
     const discount = req.body;
-  
-    
-      var query = "UPDATE discount SET dc_name=?, dc_detail=?, dc_diccountprice=?, datestart=?, dateend=? ,minimum=? ,updated_at=CURRENT_TIMESTAMP() WHERE dc_id=?";
-      connection.query(query, [discount.dc_name, discount.dc_detail, discount.dc_diccountprice, discount.datestart, discount.dateend, discount.minimum,dc_id], (err, results) => {
+
+
+    var query = "UPDATE discount SET dc_name=?, dc_detail=?, dc_diccountprice=?, datestart=?, dateend=? ,minimum=? ,updated_at=CURRENT_TIMESTAMP() WHERE dc_id=?";
+    connection.query(query, [discount.dc_name, discount.dc_detail, discount.dc_diccountprice, discount.datestart, discount.dateend, discount.minimum, dc_id], (err, results) => {
         if (!err) {
-          if (results.affectedRows === 0) {
-            console.error(err);
-            return res.status(404).json({ message: "id does not found" });
-          }
-          return res.status(200).json({ message: "update success" });
+            if (results.affectedRows === 0) {
+                console.error(err);
+                return res.status(404).json({ message: "id does not found" });
+            }
+            return res.status(200).json({ message: "update success" });
         } else {
-          return res.status(500).json(err);
+            return res.status(500).json(err);
         }
-      });
-    
-  });
+    });
+
+});
 
 
 
-  //addpro free
+//addpro free
 //   router.post('/addfree', (req, res, next) => {
 //     // const ingredient_lot = req.body;
 //     // const ingredient_lot_detail = req.body;
@@ -153,8 +153,8 @@ router.post('/addfree', (req, res, next) => {
             const pm_id = results.insertId;
 
             // Flatten the arrays into pairs
-            const values = promotiondetail.flatMap(detail => 
-                detail.smbuy_id.flatMap(smbuy_id => 
+            const values = promotiondetail.flatMap(detail =>
+                detail.smbuy_id.flatMap(smbuy_id =>
                     detail.smfree_id.map(smfree_id => [
                         pm_id,
                         smbuy_id,
@@ -356,22 +356,36 @@ router.put('/updatefree', (req, res, next) => {
             }
 
             // Delete all old promotion details for the given pm_id
-            const deleteOldDetailsQuery = `
-                DELETE FROM promotiondetail 
-                WHERE pm_id = ?
-            `;
+            // const deleteOldDetailsQuery = `
+            //     DELETE FROM promotiondetail 
+            //     WHERE pm_id = ?
+            // `;
 
-            connection.query(deleteOldDetailsQuery, [pm_id], (err, results) => {
+            // connection.query(deleteOldDetailsQuery, [pm_id], (err, results) => {
+            //     if (err) {
+            //         return connection.rollback(() => {
+            //             console.error("MySQL Error:", err);
+            //             return res.status(500).json({ message: "error", error: err });
+            //         });
+            //     }
+            
+            //เปลี่ยนมาเป็น sd ยังไม่เทส
+            const softDeleteQuery = `
+            UPDATE promotiondetail 
+            SET deleted_at = NOW() 
+            WHERE pm_id = ?
+        `;
+
+            connection.query(softDeleteQuery, [pm_id], (err, results) => {
                 if (err) {
                     return connection.rollback(() => {
                         console.error("MySQL Error:", err);
                         return res.status(500).json({ message: "error", error: err });
                     });
                 }
-
                 // Prepare new details to insert
-                const newDetails = promotiondetail.flatMap(detail => 
-                    detail.smbuy_id.flatMap(smbuy_id => 
+                const newDetails = promotiondetail.flatMap(detail =>
+                    detail.smbuy_id.flatMap(smbuy_id =>
                         detail.smfree_id.map(smfree_id => [
                             pm_id,
                             smbuy_id,

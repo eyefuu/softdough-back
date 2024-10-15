@@ -545,17 +545,19 @@ async function checkAndAddNotifications(io) {
         // For each ingredient with low stock, insert a new notification
         for (const ingredient of ingredients) {
             const notificationQuery = `
-              INSERT INTO notification (ind_id, user_id, type)
-              VALUES (?, ?, 'I')
+              INSERT INTO notification (ind_id, user_id, type,qty)
+              VALUES (?, ?, 'I',?)
             `;
-            await connection.promise().query(notificationQuery, [ingredient.ind_id, userIds]);
+            await connection.promise().query(notificationQuery, [ingredient.ind_id, userIds, ingredient.ind_stock]);
 
             // Optionally, send real-time notifications to users via socket.io
             const newNotification = {
                 ind_id: ingredient.ind_id,
                 ind_name: ingredient.ind_name,
                 user_id: userIds,
-                type: 'I' // Assuming 'I' stands for ingredient notification
+                type: 'I', // Assuming 'I' stands for ingredient notification,
+                qty: ingredient.ind_stock,
+                // createdAt: new Date()
             };
 
             const userList = userIds.split(',');
@@ -574,19 +576,58 @@ async function checkAndAddNotifications(io) {
 }
 
 
+// router.post('/markAsRead', async (req, res) => {
+//     const userId = req.body.userId;
+
+//     try {
+//         // Update read_id to include the userId
+//         const updateQuery = `
+//             UPDATE notification 
+//             SET read_id = CONCAT(IFNULL(read_id, ''), ',', ?)
+//             WHERE FIND_IN_SET(?, user_id)
+//             AND (read_id IS NULL OR NOT FIND_IN_SET(?, read_id))
+//         `;
+//         await queryAsync(updateQuery, [userId, userId, userId]);
+//         res.json({ message: 'Notifications updated as read' });
+//     } catch (error) {
+//         console.error('Error updating notifications:', error);
+//         res.status(500).json({ message: 'Error updating notifications' });
+//     }
+// });
+
+
+
+// //เพิ่มเรื่องหน่วงเวลา เพื่อให้มันเห็นแตกต่างกัน
 router.post('/markAsRead', async (req, res) => {
     const userId = req.body.userId;
 
     try {
-        // Update read_id to include the userId
-        const updateQuery = `
-            UPDATE notification 
-            SET read_id = CONCAT(IFNULL(read_id, ''), ',', ?)
+        // ตรวจสอบก่อนว่ามี userId ใน read_id แล้วหรือยัง
+        const checkQuery = `
+            SELECT read_id 
+            FROM notification 
             WHERE FIND_IN_SET(?, user_id)
             AND (read_id IS NULL OR NOT FIND_IN_SET(?, read_id))
         `;
-        await queryAsync(updateQuery, [userId, userId, userId]);
-        res.json({ message: 'Notifications updated as read' });
+        const result = await queryAsync(checkQuery, [userId, userId]);
+
+        // ถ้า result มีแสดงว่ายังไม่มี userId ใน read_id
+        if (result.length > 0) {
+            // รอ 15 วินาทีก่อนอัปเดต
+            setTimeout(async () => {
+                const updateQuery = `
+                    UPDATE notification 
+                    SET read_id = CONCAT(IFNULL(read_id, ''), ',', ?)
+                    WHERE FIND_IN_SET(?, user_id)
+                    AND (read_id IS NULL OR NOT FIND_IN_SET(?, read_id))
+                `;
+                await queryAsync(updateQuery, [userId, userId, userId]);
+                res.json({ message: 'Notifications updated as read after 10 seconds' });
+            }, 15000); // รอ 10 วินาที (10,000 milliseconds)
+        } else {
+            // ถ้า userId มีอยู่แล้วใน read_id
+            res.json({ message: 'No update needed, userId is already in read_id' });
+        }
     } catch (error) {
         console.error('Error updating notifications:', error);
         res.status(500).json({ message: 'Error updating notifications' });
@@ -594,24 +635,66 @@ router.post('/markAsRead', async (req, res) => {
 });
 
 
+// router.get('/unread', async (req, res) => {
+//     const userId = req.session.st_id;
+
+//     try {
+//         const query = `
+//             SELECT notification.*, ingredient.ind_name, ingredient.ind_stock, ingredient.qtyminimum
+//             FROM notification
+//             JOIN ingredient ON notification.ind_id = ingredient.ind_id
+//             WHERE FIND_IN_SET(?, notification.user_id)
+//             AND (notification.read_id IS NULL OR NOT FIND_IN_SET(?, notification.read_id))
+//         `;
+//         const results = await queryAsync(query, [userId, userId]);
+//         // console.log('results', results);
+//         res.json(results);
+//     } catch (error) {
+//         res.status(500).json({ message: 'Error fetching notifications' });
+//     }
+// });
+
 router.get('/unread', async (req, res) => {
     const userId = req.session.st_id;
 
     try {
         const query = `
-            SELECT notification.*, ingredient.ind_name, ingredient.ind_stock, ingredient.qtyminimum
-            FROM notification
-            JOIN ingredient ON notification.ind_id = ingredient.ind_id
-            WHERE FIND_IN_SET(?, notification.user_id)
-            AND (notification.read_id IS NULL OR NOT FIND_IN_SET(?, notification.read_id))
+        SELECT 
+            notification.*, 
+            ingredient.ind_name, 
+            ingredient.qtyminimum,
+            CASE
+                WHEN notification.read_id IS NULL OR NOT FIND_IN_SET(?, notification.read_id)
+                THEN 'N'
+                ELSE 'R'
+            END AS read_status
+        FROM notification
+        JOIN ingredient ON notification.ind_id = ingredient.ind_id
+        WHERE FIND_IN_SET(?, notification.user_id)
+        ORDER BY notification.created_at DESC;
+    
         `;
+
+        // const results = await queryAsync(query, [userId, userId]);
+        // res.json(results);
         const results = await queryAsync(query, [userId, userId]);
-        // console.log('results', results);
-        res.json(results);
+
+        // คำนวณเวลาที่ผ่านไปจาก created_at
+        const notificationsWithTimeAgo = results.map(notification => {
+            const timeAgo = calculateTimeAgo(notification.created_at);
+            return {
+                ...notification,
+                timeAgo
+            };
+        });
+        res.json(notificationsWithTimeAgo);
+        console.log('Fetched notifications for user:', notificationsWithTimeAgo);
+
     } catch (error) {
         res.status(500).json({ message: 'Error fetching notifications' });
     }
 });
+
 
 // เพิ่ม endpoint สำหรับการดึงการแจ้งเตือนทั้งหมด
 // router.get('/all', async (req, res) => {

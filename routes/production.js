@@ -5,7 +5,7 @@ const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder, isAdm
 
 
 //ส่วน select ประเภทเมนู แล้วต้องไปแสดง pd ที่เป็นประเภทเมนูนี้ในอีก select
-router.get('/selectpdt/:pdc_id', isAdminUserOrder, (req, res, next) => {
+router.get('/selectpdt/:pdc_id', (req, res, next) => {
     const pdc_id = Number(req.params.pdc_id);
 
     var query = `SELECT pd.pd_name, pdc.*
@@ -67,7 +67,7 @@ router.post('/addProductionOrder', (req, res, next) => {
 });
 
 
-router.get('/readall', isAdminUserOrder, (req, res, next) => {
+router.get('/readall', (req, res, next) => {
     // const indl_id = req.params.id;
     var query = `
     SELECT
@@ -169,7 +169,7 @@ router.get('/readall', isAdminUserOrder, (req, res, next) => {
 // });
 
 //แบบไม่ใช้ sql
-router.get('/readone/:pdo_id', isAdminUserOrder, (req, res, next) => {
+router.get('/readone/:pdo_id', (req, res, next) => {
     try {
         const pdo_id = req.params.pdo_id;
 
@@ -425,7 +425,7 @@ router.patch('/editData/:pdo_id', isAdmin, (req, res, next) => {
 // });
 
 //ยืนยันการผลิต 2=กำลังดำเนินการผลิต
-router.patch('/updatestatus/:pdo_id', isAdminUserOrder, (req, res, next) => {
+router.patch('/updatestatus/:pdo_id', (req, res, next) => {
     const pdo_id = req.params.pdo_id;
 
 
@@ -541,6 +541,35 @@ router.patch('/updatestatusdetail', (req, res, next) => {
     });
 });
 
+
+router.patch('/updatestatus3/:pdo_id', (req, res, next) => {
+    const pdo_id = req.params.pdo_id;
+
+
+    // Update pdo_status in productionOrder table
+    var updateProductionOrderQuery = "UPDATE productionOrder SET pdo_status = 3 WHERE pdo_id = ?";
+    connection.query(updateProductionOrderQuery, [pdo_id], (err, results) => {
+        if (err) {
+            console.error("Error updating pdo_status in productionOrder:", err);
+            return res.status(500).json(err);
+        }
+
+        if (results.affectedRows === 0) {
+            return res.status(404).json({ message: "Production order not found" });
+        }
+
+        // Update pdod_status in productionOrderdetail table
+        var updateProductionOrderDetailQuery = "UPDATE productionOrderdetail SET status = 2 WHERE pdo_id = ?";
+        connection.query(updateProductionOrderDetailQuery, [pdo_id], (detailErr, detailResults) => {
+            if (detailErr) {
+                console.error("Error updating pdod_status in productionOrderdetail:", detailErr);
+                return res.status(500).json(detailErr);
+            }
+
+            return res.status(200).json({ message: "Update success" });
+        });
+    });
+});
 
 // const Status3 = async (pdo_id) => {
 //     console.log("Checking and updating status for pdo_id:", pdo_id);

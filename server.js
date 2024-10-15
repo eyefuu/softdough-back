@@ -165,6 +165,8 @@ const expensesRoute = require('./routes/expenses');
 const promotionRoute = require('./routes/promotion');
 const settingRoute = require('./routes/setting');
 const notificationRouter = require('./routes/notification');
+const posRoute = require('./routes/pos')
+
 
 app.use('/owner', ownerRoute);
 app.use('/staff', staffRoute);
@@ -177,6 +179,7 @@ app.use('/expenses', expensesRoute);
 app.use('/promotion', promotionRoute);
 app.use('/setting', settingRoute);
 app.use('/notification', notificationRouter.router);
+app.use('/pos',posRoute)
 
 app.get("/", (req, res) => {
     res.json({ message: "hello world!" });

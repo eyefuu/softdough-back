@@ -30,6 +30,16 @@ module.exports = {
                     key: 'pd_id'
                 }
             },
+            // ผลิตเสียเกิน
+            broken:{
+                type: Sequelize.INTEGER,
+                allowNull: true,
+            },
+            over:{
+                type: Sequelize.INTEGER,
+                allowNull: true,
+            },
+            
             created_at: {
                 allowNull: false,
                 type: Sequelize.DATE,

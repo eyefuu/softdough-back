@@ -3,38 +3,6 @@ const connection = require("../connection");
 const router = express.Router();
 const { isALL, ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder, isAdminUserOrder, } = require('../middleware')
 
-// const http = require('http');
-// const app = express();
-// const server = http.createServer(app);
-// const setupSocket = require('../socket'); // เรียกใช้ไฟล์ socket.js
-// const io = setupSocket(server); // ตั้งค่า Socket.IO และเก็บค่า io
-
-//แจ้งเตือน
-// const http = require('http');
-// const socketIo = require('socket.io');
-// const server = http.createServer(express);
-// const { io } = require('../socket'); // หรือใช้วิธีการที่คุณตั้งค่า io
-
-// const io = socketIo(server, {
-//     cors: {
-//         origin: 'http://localhost:3000',
-//         methods: ['GET', 'POST'],
-//         allowedHeaders: ['Content-Type'],
-//         credentials: true
-//     }
-// });
-// const io = socketIo(server, { cors: { origin: 'http://localhost:3000', credentials: true } });
-
-
-// const io = socketIo(server, { 
-//     cors: { 
-//         origin: 'http://localhost:3000', 
-//         credentials: true 
-//     } 
-// });
-
-// const { checkMinimumIngredient } = require('../routes/notification');
-// const { checkMinimumIngredient } = require('../routes/notification');
 
 
 //เผื่อadd unit เพิ่มเติม
@@ -314,7 +282,7 @@ const Updateqtystock = async () => {
 
 
 // อ่านวัตถุดิบที่เลือก
-router.get('/read/:id', isAdminUserOrder, (req, res, next) => {
+router.get('/read/:id', (req, res, next) => {
     const ind_id = req.params.id;
     var query = `
     SELECT ingredient.*, 
@@ -356,7 +324,7 @@ router.get('/unit', (req, res, next) => {
 
 
 // แก้ไขวัตถุดิบ
-router.patch('/update/:id', isAdmin, (req, res, next) => {
+router.patch('/update/:id', (req, res, next) => {
     const ingredientId = req.params.id;
     const ingredientData = req.body;
     // const ind_stock = ingredientData.ind_stock || 0; // ถ้าไม่ได้รับค่า ind_stock ให้เป็น 0
@@ -420,7 +388,7 @@ router.get('/readlotdetail', (req, res, next) => {
 });
 
 // สถานะ lot จาก1 =2 ให้ใช้งานล็อตนั้นได้
-router.put('/updateIngredientLotStatus/:id', isAdmin, (req, res, next) => {
+router.put('/updateIngredientLotStatus/:id', (req, res, next) => {
     const ingredientLotId = req.params.id;
 
     // Check if ingredient lot exists
@@ -702,7 +670,7 @@ router.get('/ingredientLotDetails/:indl_id', (req, res, next) => {
 
 //ใช้ CONCAT ในคำสั่ง SQL เพื่อรวมค่า L กับค่า indl_id และใช้ LPAD เพื่อเติมเลข 0 ให้ครบ 4 ตัวอักษร
 //DATE_FORMAT function ของ MySQL
-router.get('/readlot', isAdmin, (req, res, next) => {
+router.get('/readlot', (req, res, next) => {
     var query = `
     SELECT 
         indl_id,
@@ -946,7 +914,7 @@ router.get('/readlot/:id', (req, res, next) => {
 //ได้ละเหลือแก้ตรงแสดงให้ไม่เลือกอันที่มี delete_at
 
 //มาเพิ่มหักเข้า-ออก ใน lot เพิ่ม status และใส่เงื่อนไขใน in up
-router.patch('/editData/:indl_id', isAdmin, (req, res, next) => {
+router.patch('/editData/:indl_id', (req, res, next) => {
     const indl_id = req.params.indl_id;
     // const dataToEdit = req.body.dataToEdit;
     const dataToEdit = req.body.dataaToEdit;
@@ -1927,6 +1895,162 @@ router.patch('/editData/:indl_id', isAdmin, (req, res, next) => {
 // });
 
 // //เพิ่มวัตถุดิบที่ใช้อื่นๆ ลองปรับเพื่อการแจ้งเตือน ใช้ asynchronous
+// router.post('/addUseIngrediantnew', async (req, res, next) => {
+//     const ingredient_Used = req.body.ingredient_Used;
+//     const ingredient_Used_detail = req.body.ingredient_Used_detail;
+
+//     try {
+//         // แทรกข้อมูลลงในตาราง ingredient_Used
+//         const query = "INSERT INTO ingredient_Used (status, note) VALUES (?, ?)";
+//         const [results] = await connection.promise().query(query, [ingredient_Used.status, ingredient_Used.note]);
+//         const indU_id = results.insertId;
+
+//         const detailall = [];
+//         const upind = [];
+
+//         // วนลูปผ่าน ingredient_Used_detail
+//         for (const detail of ingredient_Used_detail) {
+//             const query = `
+//                 SELECT indlde_id, qty_stock, qty_per_unit
+//                 FROM ingredient
+//                 JOIN ingredient_lot_detail ON ingredient_lot_detail.ind_id = ingredient.ind_id
+//                 JOIN ingredient_lot ON ingredient_lot.indl_id = ingredient_lot_detail.indl_id
+//                 WHERE ingredient_lot_detail.ind_id = ? 
+//                 AND ingredient_lot_detail.date_exp > NOW() 
+//                 AND qty_stock > 0 
+//                 AND ingredient_lot.status = "2"
+//                 ORDER BY ingredient_lot_detail.date_exp ASC
+//             `;
+
+//             const [results] = await connection.promise().query(query, [detail.ind_id]);
+
+//             let stopLoop = false;
+//             let new_qty_stock = 1;
+
+//             // วนลูปผ่านผลลัพธ์จาก query
+//             for (const result of results) {
+//                 if (!stopLoop) {
+//                     if (new_qty_stock > 0) {
+//                         const qty_per_unit = result.qty_per_unit;
+//                         const qty_used_sum = detail.qty_used_sum;
+//                         const scrap = detail.scrap;
+//                         const total_quantity_used = qty_used_sum * qty_per_unit + scrap;
+//                         const qty_stock = result.qty_stock;
+
+//                         new_qty_stock = qty_stock - total_quantity_used;
+
+//                         if (new_qty_stock < 0) {
+//                             const new_qty_stockup = total_quantity_used + new_qty_stock;
+
+//                             detailall.push({
+//                                 indU_id: indU_id,
+//                                 indlde_id: result.indlde_id,
+//                                 qty_used_sum: detail.qty_used_sum,
+//                                 scrap: detail.scrap,
+//                                 qtyusesum: new_qty_stockup,
+//                                 deleted_at: null
+//                             });
+
+//                             if (ingredient_Used.status == "2") {
+//                                 upind.push({ indlde_id: result.indlde_id, qty_stock: 0 });
+//                             }
+//                         } else {
+//                             detailall.push({
+//                                 indU_id: indU_id,
+//                                 indlde_id: result.indlde_id,
+//                                 qty_used_sum: detail.qty_used_sum,
+//                                 scrap: detail.scrap,
+//                                 qtyusesum: total_quantity_used,
+//                                 deleted_at: null
+//                             });
+
+//                             if (ingredient_Used.status == "2") {
+//                                 upind.push({ indlde_id: result.indlde_id, qty_stock: new_qty_stock });
+//                             }
+
+//                             stopLoop = true;
+//                         }
+//                     } else if (new_qty_stock < 0) {
+//                         let new_qty_stockup = new_qty_stock;
+
+//                         new_qty_stock = result.qty_stock + new_qty_stock;
+//                         new_qty_stockup = Math.abs(new_qty_stockup);
+
+//                         if (new_qty_stock > 0 || new_qty_stock == 0) {
+//                             detailall.push({
+//                                 indU_id: indU_id,
+//                                 indlde_id: result.indlde_id,
+//                                 qty_used_sum: detail.qty_used_sum,
+//                                 scrap: detail.scrap,
+//                                 qtyusesum: new_qty_stockup,
+//                                 deleted_at: null
+//                             });
+
+//                             if (ingredient_Used.status == "2") {
+//                                 upind.push({ indlde_id: result.indlde_id, qty_stock: new_qty_stock });
+//                             }
+
+//                             stopLoop = true;
+//                         } else {
+//                             detailall.push({
+//                                 indU_id: indU_id,
+//                                 indlde_id: result.indlde_id,
+//                                 qty_used_sum: detail.qty_used_sum,
+//                                 scrap: detail.scrap,
+//                                 qtyusesum: result.qty_stock,
+//                                 deleted_at: null
+//                             });
+//                         }
+//                     } else {
+//                         stopLoop = true;
+//                     }
+//                 }
+//             }
+//         }
+
+//         // แทรกรายละเอียด detailall ลงในฐานข้อมูล
+//         if (detailall.length > 0) {
+//             const insertDetailQuery = "INSERT INTO ingredient_Used_detail (indU_id, indlde_id, qty_used_sum, scrap, qtyusesum, deleted_at) VALUES ?";
+//             const detailValues = detailall.map(item => [item.indU_id, item.indlde_id, item.qty_used_sum, item.scrap, item.qtyusesum, item.deleted_at]);
+
+//             await connection.promise().query(insertDetailQuery, [detailValues]);
+//             console.log("แทรกข้อมูลรายละเอียดสำเร็จ");
+//         }
+
+//         // อัปเดต ingredient_lot_detail หากสถานะ == "2"
+//         if (ingredient_Used.status == "2" && upind.length > 0) {
+//             const updateQuery = "UPDATE ingredient_lot_detail SET qty_stock = ? WHERE indlde_id = ?";
+
+//             for (const item of upind) {
+//                 await connection.promise().query(updateQuery, [item.qty_stock, item.indlde_id]);
+//             }
+
+//             console.log("อัปเดตรายละเอียด lot สำเร็จ");
+//         }
+
+//         // เรียกใช้ฟังก์ชัน Updateqtystock ก่อน checkAndAddNotifications
+//         console.log("Updateqtystock ใน api used");
+//         Updateqtystock(); // เรียกใช้ฟังก์ชันที่ต้องการ
+
+//         // ส่งการตอบกลับสำเร็จ
+//         res.status(200).json({ message: "success" });
+
+//         // เรียกฟังก์ชันแจ้งเตือน
+//         const { checkAndAddNotifications } = require('../routes/notification');
+
+//         const io = req.app.locals.io;
+//         // ในไฟล์ ingredient.js
+//         checkAndAddNotifications(io);
+
+//         // console.log('io',io)
+
+//     } catch (err) {
+//         console.error("ข้อผิดพลาด MySQL:", err);
+//         return res.status(500).json({ message: "error", error: err });
+//     }
+// });
+
+// แก้ตาม user บอกคือส่งไปเป็นหน่วย่อย
 router.post('/addUseIngrediantnew', async (req, res, next) => {
     const ingredient_Used = req.body.ingredient_Used;
     const ingredient_Used_detail = req.body.ingredient_Used_detail;
@@ -1959,14 +2083,16 @@ router.post('/addUseIngrediantnew', async (req, res, next) => {
             let stopLoop = false;
             let new_qty_stock = 1;
 
+            // คำนวณ qty_used_sum และ scrap จาก qtyusedgrum
+            const qtyusedgrum = detail.qtyusedgrum; // รับค่า qtyusedgrum จาก request
+            let qty_used_sum = Math.floor(qtyusedgrum / results[0].qty_per_unit); // คำนวณ qty_used_sum
+            let scrap = qtyusedgrum % results[0].qty_per_unit; // คำนวณเศษเป็น scrap
+
             // วนลูปผ่านผลลัพธ์จาก query
             for (const result of results) {
                 if (!stopLoop) {
                     if (new_qty_stock > 0) {
-                        const qty_per_unit = result.qty_per_unit;
-                        const qty_used_sum = detail.qty_used_sum;
-                        const scrap = detail.scrap;
-                        const total_quantity_used = qty_used_sum * qty_per_unit + scrap;
+                        const total_quantity_used = qty_used_sum * results[0].qty_per_unit + scrap;
                         const qty_stock = result.qty_stock;
 
                         new_qty_stock = qty_stock - total_quantity_used;
@@ -1977,8 +2103,8 @@ router.post('/addUseIngrediantnew', async (req, res, next) => {
                             detailall.push({
                                 indU_id: indU_id,
                                 indlde_id: result.indlde_id,
-                                qty_used_sum: detail.qty_used_sum,
-                                scrap: detail.scrap,
+                                qty_used_sum: qty_used_sum,
+                                scrap: scrap,
                                 qtyusesum: new_qty_stockup,
                                 deleted_at: null
                             });
@@ -1990,8 +2116,8 @@ router.post('/addUseIngrediantnew', async (req, res, next) => {
                             detailall.push({
                                 indU_id: indU_id,
                                 indlde_id: result.indlde_id,
-                                qty_used_sum: detail.qty_used_sum,
-                                scrap: detail.scrap,
+                                qty_used_sum: qty_used_sum,
+                                scrap: scrap,
                                 qtyusesum: total_quantity_used,
                                 deleted_at: null
                             });
@@ -2001,37 +2127,6 @@ router.post('/addUseIngrediantnew', async (req, res, next) => {
                             }
 
                             stopLoop = true;
-                        }
-                    } else if (new_qty_stock < 0) {
-                        let new_qty_stockup = new_qty_stock;
-
-                        new_qty_stock = result.qty_stock + new_qty_stock;
-                        new_qty_stockup = Math.abs(new_qty_stockup);
-
-                        if (new_qty_stock > 0 || new_qty_stock == 0) {
-                            detailall.push({
-                                indU_id: indU_id,
-                                indlde_id: result.indlde_id,
-                                qty_used_sum: detail.qty_used_sum,
-                                scrap: detail.scrap,
-                                qtyusesum: new_qty_stockup,
-                                deleted_at: null
-                            });
-
-                            if (ingredient_Used.status == "2") {
-                                upind.push({ indlde_id: result.indlde_id, qty_stock: new_qty_stock });
-                            }
-
-                            stopLoop = true;
-                        } else {
-                            detailall.push({
-                                indU_id: indU_id,
-                                indlde_id: result.indlde_id,
-                                qty_used_sum: detail.qty_used_sum,
-                                scrap: detail.scrap,
-                                qtyusesum: result.qty_stock,
-                                deleted_at: null
-                            });
                         }
                     } else {
                         stopLoop = true;
@@ -2074,14 +2169,11 @@ router.post('/addUseIngrediantnew', async (req, res, next) => {
         // ในไฟล์ ingredient.js
         checkAndAddNotifications(io);
 
-        // console.log('io',io)
-
     } catch (err) {
         console.error("ข้อผิดพลาด MySQL:", err);
         return res.status(500).json({ message: "error", error: err });
     }
 });
-
 
 
 
@@ -2215,7 +2307,8 @@ router.get('/addUseIngrediantLotpro/:pdo_id', (req, res, next) => {
 
                 const Qx_prime = (Qx * N) / M;
                 const qty_used_sum = Math.floor(Qx_prime / qty_per_unit);
-                const scrap = Qx_prime % qty_per_unit;
+                // const scrap = Qx_prime % qty_per_unit;
+                const scrap = Math.trunc(Qx_prime % qty_per_unit);
 
                 finalResults.push({
                     pd_name: row.pd_name,
@@ -2572,8 +2665,12 @@ router.post('/addUseIngrediantLot', (req, res, next) => {
             //เพิ่มในส่วนเช็คสต๊อก เพื่อแจ้งเตือน
             // checkMinimumIngredient()
             //import ภายใน
-            const { checkMinimumIngredient } = require('../routes/notification');
-            checkMinimumIngredient();
+            // เรียกฟังก์ชันแจ้งเตือน
+            const { checkAndAddNotifications } = require('../routes/notification');
+
+            const io = req.app.locals.io;
+            // ในไฟล์ ingredient.js
+            checkAndAddNotifications(io);
 
         })
     });
@@ -2593,7 +2690,7 @@ router.get('/usedIngredients', (req, res, next) => {
             indU.indU_id AS id,
             indU.status,
             indU.note,
-            indU.created_at,
+            DATE_FORMAT(indU.created_at, '%Y-%m-%d') as created_at,
             indU.updated_at,
             'ทั่วไป' AS name,
             'other' AS checkk
@@ -2608,7 +2705,7 @@ router.get('/usedIngredients', (req, res, next) => {
             CONCAT('PD', LPAD(pdod.pdo_id, 7, '0')) AS id,
             induP.status,
             NULL AS note,
-            MAX(induP.created_at) AS created_at,
+            DATE_FORMAT(MAX(induP.created_at), '%Y-%m-%d') AS created_at, -- แปลงวันที่ให้เป็นรูปแบบ YYYY-MM-DD
             NULL AS updated_at,
             'ผลิตตามใบสั่งผลิต' AS name,
             'production' AS checkk
@@ -2618,7 +2715,7 @@ router.get('/usedIngredients', (req, res, next) => {
         WHERE 
             induP.deleted_at IS NULL
         GROUP BY 
-            induP.pdod_id
+            pdod.pdo_id
     ) AS combined_results
     ORDER BY 
         created_at DESC;
@@ -3256,8 +3353,13 @@ router.patch('/updateStatus/:id', (req, res, next) => {
 
             res.status(200).json({ message: "Status updated and details fetched successfully", data: usedtocalculate, indUd_ids: indUd_ids });
 
-            //เพิ่มในส่วนเช็คสต๊อก เพื่อแจ้งเตือน
-            checkMinimumIngredient()
+            // เรียกฟังก์ชันแจ้งเตือน
+            const { checkAndAddNotifications } = require('../routes/notification');
+
+            const io = req.app.locals.io;
+            // ในไฟล์ ingredient.js
+            checkAndAddNotifications(io);
+
 
         });
     });
@@ -3512,18 +3614,6 @@ router.patch('/updateStatusnotuse/:id', (req, res, next) => {
     });
 });
 
-//ลองฟังก์ชัน +- ค่า สต๊อก ingredient
-
-function newstockingredient(req, res) {
-
-    // const { quantity, price, totalQuantity } = req.body;
-    // // คำนวณต้นทุนวัตถุดิบ
-    // const materialCost = (quantity * (price / totalQuantity)).toFixed(2);
-    // // ส่งผลลัพธ์กลับในรูปแบบ JSON
-    // res.json({ materialCost });
-}
-
-
 
 // ลองค้นหา
 router.get('/ingredient/search', (req, res) => {
@@ -3553,6 +3643,344 @@ router.get('/ingredientlot/search', (req, res) => {
         res.json(result);
     });
 });
+
+//dash
+// ลองกับวันที่
+//ยังไม่เอาที่ถามแชทล่าสุดมาวาง เรื่องการจัดเรียง คิดว่าบางส่วนอาจจะคำนวณแต่แรกแล้วดึงไปคำนวนส่วนอื่นต่อแทน อาจจะเปลี่ยนให้ from ingredient_Used_Pro
+// async function getIngredientUsedDetails(req, res) {
+//     try {
+//         // รับข้อมูลจาก request เช่น startDate และ endDate (เป็นรูปแบบ YYYY-MM-DD)
+//         // const { startDate, endDate } = req.query;
+
+//         const sql = `
+//         SELECT 
+//             iup.pdod_id, iup.qty_used_sum, iup.status AS iup_status, iup.scrap, iup.qtyusesum, 
+//             p.pd_id, p.pd_name, p.pd_qtyminimum,
+//             r.qtylifetime, r.produced_qty,
+//             rd.ingredients_qty,
+//             i.ind_name, i.qtyminimum, i.qty_per_unit,  -- เพิ่ม i.qty_per_unit เพื่อใช้ในคำนวณ
+//             ild.qtypurchased, ild.price,
+//             pod.qty, pod.status,
+//             -- คำนวณ costingredient
+//             (iup.qtyusesum * ild.price) / (ild.qtypurchased * i.qty_per_unit) AS costingredient
+//         FROM ingredient_Used_Pro iup
+//         JOIN productionOrderdetail pod ON iup.pdod_id = pod.pdod_id
+//         JOIN products p ON pod.pd_id = p.pd_id
+//         LEFT JOIN recipe r ON r.pd_id = p.pd_id
+//         LEFT JOIN recipedetail rd ON rd.rc_id = r.rc_id
+//         LEFT JOIN ingredient i ON rd.ind_id = i.ind_id
+//         LEFT JOIN ingredient_lot_detail ild ON ild.ind_id = i.ind_id      
+//         `;
+
+//         // รันคำสั่ง SQL โดยส่งค่า startDate, endDate ในรูปแบบ YYYY-MM-DD
+//         connection.query(sql, [startDate, endDate], (err, results) => {
+//             if (err) {
+//                 console.error('Error executing query:', err);
+//                 res.status(500).json({ message: 'Database query failed' });
+//             } else {
+//                 res.status(200).json(results);
+//             }
+//         });
+//     } catch (error) {
+//         console.error('Error fetching ingredient used details:', error);
+//         res.status(500).json({ message: 'Server error' });
+//     }
+// }
+
+// ฟังก์ชันสำหรับดึงรายละเอียดการใช้วัตถุดิบ
+
+//แยกตามวัตถุดิบแบบดูวันเอา
+// เป็นเวอก่อนจัดเรียง
+// async function getIngredientUsedDetails(req, res) {
+//     try {
+//         // รับข้อมูลจาก request เช่น startDate และ endDate (เป็นรูปแบบ YYYY-MM-DD)
+//         const { startDate, endDate } = req.query;
+
+//         const sql = `
+//         SELECT 
+//         iup.induP_id,
+//         iup.indlde_id,
+//         iup.qtyusesum,
+//         ild.price,
+//         iup.status,
+//         iup.scrap,
+//         p.pd_id,
+//         p.pd_name,
+//         ild.qtypurchased,
+//         i.qty_per_unit,
+//         iup.created_at,
+
+//             -- Calculation of costingredient
+//             (iup.qtyusesum * ild.price) / (ild.qtypurchased * i.qty_per_unit) AS costingredient
+
+//         FROM ingredient_Used_Pro iup
+//         JOIN productionOrderdetail pod ON iup.pdod_id = pod.pdod_id  
+//         JOIN products p ON pod.pd_id = p.pd_id                       
+//         LEFT JOIN recipe r ON r.pd_id = p.pd_id                      
+//         LEFT JOIN recipedetail rd ON rd.rc_id = r.rc_id   
+//         LEFT JOIN ingredient_lot_detail ild ON iup.indlde_id = ild.indlde_id 
+//         LEFT JOIN ingredient i ON ild.ind_id = i.ind_id               
+
+//         WHERE DATE(iup.created_at) BETWEEN ? AND ?  -- Filter results based on date range
+//         GROUP BY iup.induP_id
+
+
+//             `;
+
+//         // รันคำสั่ง SQL โดยส่งค่า startDate, endDate ในรูปแบบ YYYY-MM-DD
+//         connection.query(sql, [startDate, endDate], (err, results) => {
+//             if (err) {
+//                 console.error('Error executing query:', err);
+//                 res.status(500).json({ message: 'Database query failed' });
+//             } else {
+//                 // ส่งผลลัพธ์กลับไปยัง client
+//                 res.status(200).json(results);
+//             }
+//         });
+//     } catch (error) {
+//         console.error('Error fetching ingredient used details:', error);
+//         res.status(500).json({ message: 'Server error' });
+//     }
+// }
+
+//ยังไม่ปรับกับ dash
+// async function getIngredientUsedDetails(req, res) {
+//     try {
+//         const { startDate, endDate } = req.query;
+
+//         const sql = `
+//         SELECT 
+//             pod.pdod_id,
+//             pod.qty,
+//             pod.pdo_id,
+//             iup.induP_id,
+//             iup.indlde_id,
+//             iup.qtyusesum,
+//             ild.price,
+//             iup.status,
+//             iup.scrap,
+//             p.pd_id,
+//             p.pd_name,
+//             ild.qtypurchased,
+//             i.qty_per_unit,
+//             iup.created_at,
+//             (iup.qtyusesum * ild.price) / (ild.qtypurchased * i.qty_per_unit) AS costingredient
+//         FROM ingredient_Used_Pro iup
+//         JOIN productionOrderdetail pod ON iup.pdod_id = pod.pdod_id  
+//         JOIN products p ON pod.pd_id = p.pd_id                       
+//         LEFT JOIN recipe r ON r.pd_id = p.pd_id                      
+//         LEFT JOIN recipedetail rd ON rd.rc_id = r.rc_id   
+//         LEFT JOIN ingredient_lot_detail ild ON iup.indlde_id = ild.indlde_id 
+//         LEFT JOIN ingredient i ON ild.ind_id = i.ind_id               
+//         WHERE DATE(iup.created_at) BETWEEN ? AND ?
+//         `;
+
+//         connection.query(sql, [startDate, endDate], (err, results) => {
+//             if (err) {
+//                 console.error('Error executing query:', err);
+//                 res.status(500).json({ message: 'Database query failed' });
+//             } else {
+//                 // จัดกลุ่มผลลัพธ์ตาม pd_id และ pd_name พร้อมตรวจสอบค่าซ้ำ
+//                 const groupedResults = results.reduce((acc, row) => {
+//                     const { pd_id, pd_name, pdo_id, pdod_id, induP_id ,qty} = row;
+
+//                     // ค้นหาว่ามี pd_id นี้อยู่ใน acc หรือไม่
+//                     let product = acc.find(item => item.pd_id === pd_id);
+
+//                     if (!product) {
+//                         // ถ้ายังไม่มีใน acc ให้เพิ่มผลิตภัณฑ์ใหม่
+//                         product = {
+//                             pd_id: pd_id,
+//                             pd_name: pd_name,
+//                             used: []
+//                         };
+//                         acc.push(product);
+//                     }
+
+//                     // ค้นหาว่า pdo_id และ pdod_id นี้มีอยู่ใน used หรือไม่
+//                     let usedEntry = product.used.find(item => item.pdo === pdo_id && item.pdod_id === pdod_id);
+
+//                     if (!usedEntry) {
+//                         // ถ้ายังไม่มีให้สร้าง entry ใหม่พร้อม sumcost
+//                         usedEntry = {
+//                             pdo: pdo_id,
+//                             pdod_id: pdod_id,
+//                             qtypodde: qty,
+//                             sumcost: 0,
+//                             perpiece:0,
+//                             detail: []
+//                         };
+//                         product.used.push(usedEntry);
+//                     }
+
+//                     // ตรวจสอบว่า detail มีข้อมูลนี้อยู่หรือไม่
+//                     const detailExists = usedEntry.detail.some(detailItem => 
+//                         detailItem.induP_id === row.induP_id && detailItem.indlde_id === row.indlde_id
+//                     );
+
+//                     if (!detailExists) {
+//                         // เพิ่มรายละเอียดของการใช้ส่วนประกอบลงใน detail
+//                         usedEntry.detail.push({
+//                             induP_id: row.induP_id,
+//                             indlde_id: row.indlde_id,
+//                             qtyusesum: row.qtyusesum,
+//                             price: row.price,
+//                             status: row.status,
+//                             scrap: row.scrap,
+//                             qtypurchased: row.qtypurchased,
+//                             qty_per_unit: row.qty_per_unit,
+//                             created_at: row.created_at,
+//                             costingredient: row.costingredient
+//                         });
+
+//                         // เพิ่ม costingredient ลงใน sumcost ของ usedEntry
+//                         usedEntry.sumcost += row.costingredient;
+//                         usedEntry.perpiece = usedEntry.sumcost/usedEntry.qtypodde;
+//                     }
+
+//                     return acc;
+//                 }, []);
+
+//                 // ส่งข้อมูลที่จัดกลุ่มและกรองแล้วกลับไปยัง client
+//                 res.status(200).json(groupedResults);
+//             }
+//         });
+//     } catch (error) {
+//         console.error('Error fetching ingredient used details:', error);
+//         res.status(500).json({ message: 'Server error' });
+//     }
+// }
+
+//ปรับกับdash
+async function getIngredientUsedDetails(req, res) {
+    try {
+        const { startDate, endDate } = req.query;
+
+        const sql = `
+        SELECT 
+            pod.pdod_id,
+            DATE_FORMAT(pod.created_at, '%Y-%m-%d') AS pdocreated_at,
+            pod.qty,
+            CONCAT('PD', LPAD( pod.pdo_id, 7, '0')) AS pdo_id_name,
+            u.un_name,
+            pod.pdo_id,
+            iup.induP_id,
+            iup.indlde_id,
+            iup.qtyusesum,
+            ild.price,
+            iup.status,
+            iup.scrap,
+            p.pd_id,
+            p.pd_name,
+            ild.qtypurchased,
+            i.qty_per_unit,
+            iup.created_at,
+            pc.pdc_name,
+            (iup.qtyusesum * ild.price) / (ild.qtypurchased * i.qty_per_unit) AS costingredient
+        FROM ingredient_Used_Pro iup
+        JOIN productionOrderdetail pod ON iup.pdod_id = pod.pdod_id  
+        JOIN products p ON pod.pd_id = p.pd_id     
+        LEFT JOIN productcategory pc ON pc.pdc_id = p.pdc_id                                         
+        LEFT JOIN recipe r ON r.pd_id = p.pd_id       
+        LEFT JOIN unit u ON u.un_id = r.un_id                                     
+        LEFT JOIN recipedetail rd ON rd.rc_id = r.rc_id   
+        LEFT JOIN ingredient_lot_detail ild ON iup.indlde_id = ild.indlde_id 
+        LEFT JOIN ingredient i ON ild.ind_id = i.ind_id               
+        WHERE DATE(iup.created_at) BETWEEN ? AND ?
+        `;
+
+        connection.query(sql, [startDate, endDate], (err, results) => {
+            if (err) {
+                console.error('Error executing query:', err);
+                res.status(500).json({ message: 'Database query failed' });
+            } else {
+                // จัดกลุ่มผลลัพธ์ตาม pd_id และ pd_name พร้อมตรวจสอบค่าซ้ำ
+                const groupedResults = results.reduce((acc, row) => {
+                    const { pd_id, pd_name, pdc_name, pdo_id, un_name, pdo_id_name, pdod_id, pdocreated_at, induP_id, qty } = row;
+
+                    // ค้นหาว่ามี pd_id นี้อยู่ใน acc หรือไม่
+                    let product = acc.find(item => item.pd_id === pd_id);
+
+                    if (!product) {
+                        // ถ้ายังไม่มีใน acc ให้เพิ่มผลิตภัณฑ์ใหม่
+                        product = {
+                            pd_id: pd_id,
+                            pd_name: pd_name,
+                            pdc_name: pdc_name,
+                            totalCost: 0, // เพิ่มฟิลด์ totalCost เพื่อใช้ในแดชบอร์ด
+                            used: []
+                        };
+                        acc.push(product);
+                    }
+
+                    // ค้นหาว่า pdo_id และ pdod_id นี้มีอยู่ใน used หรือไม่
+                    let usedEntry = product.used.find(item => item.pdo === pdo_id && item.pdod_id === pdod_id);
+
+                    if (!usedEntry) {
+                        // ถ้ายังไม่มีให้สร้าง entry ใหม่พร้อม sumcost
+                        usedEntry = {
+                            pdo: pdo_id,
+                            pdo_id_name: pdo_id_name,
+                            pdocreated_at: pdocreated_at,
+                            pdod_id: pdod_id,
+                            un_name: un_name,
+                            qtyUsed: qty,
+                            sumCost: 0,
+                            perPiece: 0,
+                            detail: []
+                        };
+                        product.used.push(usedEntry);
+                    }
+
+                    // ตรวจสอบว่า detail มีข้อมูลนี้อยู่หรือไม่
+                    const detailExists = usedEntry.detail.some(detailItem =>
+                        detailItem.induP_id === row.induP_id && detailItem.indlde_id === row.indlde_id
+                    );
+
+                    if (!detailExists) {
+                        // เพิ่มรายละเอียดของการใช้ส่วนประกอบลงใน detail
+                        usedEntry.detail.push({
+                            induP_id: row.induP_id,
+                            indlde_id: row.indlde_id,
+                            qtyUseSum: row.qtyusesum,
+                            price: row.price,
+                            status: row.status,
+                            scrap: row.scrap,
+                            qtyPurchased: row.qtypurchased,
+                            qtyPerUnit: row.qty_per_unit,
+                            createdAt: row.created_at,
+                            costIngredient: row.costingredient
+                        });
+
+                        // เพิ่ม costingredient ลงใน sumCost ของ usedEntry
+                        // อัปเดต sumCost และ perPiece ให้เป็นตัวเลขที่มีทศนิยม 2 ตำแหน่ง
+                        usedEntry.sumCost = parseFloat((usedEntry.sumCost + row.costingredient).toFixed(2));
+                        usedEntry.perPiece = parseFloat((usedEntry.sumCost / usedEntry.qtyUsed).toFixed(2));
+
+                        // อัปเดต totalCost ของ product ด้วยค่า sumCost ของ usedEntry และทศนิยม 2 ตำแหน่ง
+                        product.totalCost = parseFloat((product.totalCost + row.costingredient).toFixed(2));
+
+                    }
+
+                    return acc;
+                }, []);
+
+                // ส่งข้อมูลที่จัดกลุ่มและกรองแล้วกลับไปยัง client
+                res.status(200).json(groupedResults);
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching ingredient used details:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+}
+
+
+
+// Route สำหรับดึงข้อมูลการใช้วัตถุดิบ
+router.get('/getIngredientUsedDetails', getIngredientUsedDetails);
+
+
 
 
 
