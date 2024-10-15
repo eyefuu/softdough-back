@@ -288,7 +288,8 @@ router.get('/readfreedetail/:pm_id', async (req, res, next) => {
     JOIN 
         salesMenuType smfreetype ON smfree.smt_id = smfreetype.smt_id
     WHERE 
-        p.pm_id = ?;  -- Use parameterized query for security
+        p.pm_id = ? AND pd.deleted_at IS NULL;
+    
     `;
 
     connection.query(query, [pm_id], (err, results) => {
@@ -327,20 +328,120 @@ router.get('/readfreedetail/:pm_id', async (req, res, next) => {
     });
 });
 
-// แก้ไข free ยังไม่เทส
+// 
 //ไม่ได้ค่าคุรน้า ไปถามใหม่แบบให้นับแถวที่มีของ idpm นั้น แล้วแก้ไขเลย เกินก็ลบ ขาดก็เพิ่ม
 // ตอนนี้มันลบไปเลย ไม่ใช่ sd แล้วลบหมดแอดใหม่เอา ซึ่งถ้าทำการขายน่าจะบ่ได้เด้อค่าเว้นแต่เก็บเพิ่มในออเดอร์เอา
+
+//ยังไม่ลองข้อมูลสินค้าให้ว่าง
+// router.put('/updatefree', (req, res, next) => {
+//     const { pm_id, pm_name, pm_datestart, pm_dateend, promotiondetail } = req.body;
+//     console.log(promotiondetail,'promotiondetail')
+
+//     // Start the transaction
+//     connection.beginTransaction((err) => {
+//         if (err) {
+//             console.error("MySQL Error:", err);
+//             return res.status(500).json({ message: "error", error: err });
+//         }
+
+//         // Update the promotion table
+//         const updateQuery = `
+//             UPDATE promotion 
+//             SET pm_name = ?, pm_datestart = ?, pm_dateend = ? 
+//             WHERE pm_id = ?
+//         `;
+
+//         connection.query(updateQuery, [pm_name, pm_datestart, pm_dateend, pm_id], (err, results) => {
+//             if (err) {
+//                 return connection.rollback(() => {
+//                     console.error("MySQL Error:", err);
+//                     return res.status(500).json({ message: "error", error: err });
+//                 });
+//             }
+
+//             // Delete all old promotion details for the given pm_id
+//             // const deleteOldDetailsQuery = `
+//             //     DELETE FROM promotiondetail 
+//             //     WHERE pm_id = ?
+//             // `;
+
+//             // connection.query(deleteOldDetailsQuery, [pm_id], (err, results) => {
+//             //     if (err) {
+//             //         return connection.rollback(() => {
+//             //             console.error("MySQL Error:", err);
+//             //             return res.status(500).json({ message: "error", error: err });
+//             //         });
+//             //     }
+            
+//             //เปลี่ยนมาเป็น sd ยังไม่เทส
+//             const softDeleteQuery = `
+//             UPDATE promotiondetail 
+//             SET deleted_at = NOW() 
+//             WHERE pm_id = ?
+//         `;
+
+//             connection.query(softDeleteQuery, [pm_id], (err, results) => {
+//                 if (err) {
+//                     return connection.rollback(() => {
+//                         console.error("MySQL Error:", err);
+//                         return res.status(500).json({ message: "error", error: err });
+//                     });
+//                 }
+//                 // Prepare new details to insert
+//                 const newDetails = promotiondetail.flatMap(detail =>
+//                     detail.smbuy_id.flatMap(smbuy_id =>
+//                         detail.smfree_id.map(smfree_id => [
+//                             pm_id,
+//                             smbuy_id,
+//                             smfree_id,
+//                             null // Adding NULL for the deleted_at column
+//                         ])
+//                     )
+//                 );
+
+//                 // Insert the new details
+//                 const insertQuery = `
+//                     INSERT INTO promotiondetail (pm_id, smbuy_id, smfree_id, deleted_at) 
+//                     VALUES ?
+//                 `;
+
+//                 connection.query(insertQuery, [newDetails], (err, results) => {
+//                     if (err) {
+//                         return connection.rollback(() => {
+//                             console.error("MySQL Error:", err);
+//                             return res.status(500).json({ message: "error", error: err });
+//                         });
+//                     }
+
+//                     // Commit the transaction
+//                     connection.commit((err) => {
+//                         if (err) {
+//                             return connection.rollback(() => {
+//                                 console.error("MySQL Error:", err);
+//                                 return res.status(500).json({ message: "error", error: err });
+//                             });
+//                         }
+
+//                         return res.status(200).json({ message: "success", pm_id });
+//                     });
+//                 });
+//             });
+//         });
+//     });
+// });
+
 router.put('/updatefree', (req, res, next) => {
     const { pm_id, pm_name, pm_datestart, pm_dateend, promotiondetail } = req.body;
+    console.log(promotiondetail, 'promotiondetail');
 
-    // Start the transaction
+    // เริ่มต้นธุรกรรม
     connection.beginTransaction((err) => {
         if (err) {
-            console.error("MySQL Error:", err);
+            console.error("ข้อผิดพลาด MySQL:", err);
             return res.status(500).json({ message: "error", error: err });
         }
 
-        // Update the promotion table
+        // อัปเดตตารางโปรโมชั่น
         const updateQuery = `
             UPDATE promotion 
             SET pm_name = ?, pm_datestart = ?, pm_dateend = ? 
@@ -350,78 +451,82 @@ router.put('/updatefree', (req, res, next) => {
         connection.query(updateQuery, [pm_name, pm_datestart, pm_dateend, pm_id], (err, results) => {
             if (err) {
                 return connection.rollback(() => {
-                    console.error("MySQL Error:", err);
+                    console.error("ข้อผิดพลาด MySQL:", err);
                     return res.status(500).json({ message: "error", error: err });
                 });
             }
 
-            // Delete all old promotion details for the given pm_id
-            // const deleteOldDetailsQuery = `
-            //     DELETE FROM promotiondetail 
-            //     WHERE pm_id = ?
-            // `;
+            // ตรวจสอบว่า promotiondetail มี smbuy_id และ smfree_id ว่างเปล่าหรือไม่
+            const allEmpty = promotiondetail.every(detail => detail.smbuy_id.length === 0 && detail.smfree_id.length === 0);
 
-            // connection.query(deleteOldDetailsQuery, [pm_id], (err, results) => {
-            //     if (err) {
-            //         return connection.rollback(() => {
-            //             console.error("MySQL Error:", err);
-            //             return res.status(500).json({ message: "error", error: err });
-            //         });
-            //     }
-            
-            //เปลี่ยนมาเป็น sd ยังไม่เทส
-            const softDeleteQuery = `
-            UPDATE promotiondetail 
-            SET deleted_at = NOW() 
-            WHERE pm_id = ?
-        `;
-
-            connection.query(softDeleteQuery, [pm_id], (err, results) => {
-                if (err) {
-                    return connection.rollback(() => {
-                        console.error("MySQL Error:", err);
-                        return res.status(500).json({ message: "error", error: err });
-                    });
-                }
-                // Prepare new details to insert
-                const newDetails = promotiondetail.flatMap(detail =>
-                    detail.smbuy_id.flatMap(smbuy_id =>
-                        detail.smfree_id.map(smfree_id => [
-                            pm_id,
-                            smbuy_id,
-                            smfree_id,
-                            null // Adding NULL for the deleted_at column
-                        ])
-                    )
-                );
-
-                // Insert the new details
-                const insertQuery = `
-                    INSERT INTO promotiondetail (pm_id, smbuy_id, smfree_id, deleted_at) 
-                    VALUES ?
+            if (!allEmpty) {
+                // อัปเดตข้อมูลโปรโมชั่นเดิม
+                const softDeleteQuery = `
+                    UPDATE promotiondetail 
+                    SET deleted_at = NOW() 
+                    WHERE pm_id = ?
                 `;
 
-                connection.query(insertQuery, [newDetails], (err, results) => {
+                connection.query(softDeleteQuery, [pm_id], (err, results) => {
                     if (err) {
                         return connection.rollback(() => {
-                            console.error("MySQL Error:", err);
+                            console.error("ข้อผิดพลาด MySQL:", err);
                             return res.status(500).json({ message: "error", error: err });
                         });
                     }
 
-                    // Commit the transaction
-                    connection.commit((err) => {
+                    // เตรียมรายละเอียดใหม่ที่จะนำเข้า
+                    const newDetails = promotiondetail.flatMap(detail =>
+                        detail.smbuy_id.flatMap(smbuy_id =>
+                            detail.smfree_id.map(smfree_id => [
+                                pm_id,
+                                smbuy_id,
+                                smfree_id,
+                                null // เพิ่ม NULL สำหรับคอลัมน์ deleted_at
+                            ])
+                        )
+                    );
+
+                    // นำเข้ารายละเอียดใหม่
+                    const insertQuery = `
+                        INSERT INTO promotiondetail (pm_id, smbuy_id, smfree_id, deleted_at) 
+                        VALUES ?
+                    `;
+
+                    connection.query(insertQuery, [newDetails], (err, results) => {
                         if (err) {
                             return connection.rollback(() => {
-                                console.error("MySQL Error:", err);
+                                console.error("ข้อผิดพลาด MySQL:", err);
                                 return res.status(500).json({ message: "error", error: err });
                             });
                         }
 
-                        return res.status(200).json({ message: "success", pm_id });
+                        // ยืนยันธุรกรรม
+                        connection.commit((err) => {
+                            if (err) {
+                                return connection.rollback(() => {
+                                    console.error("ข้อผิดพลาด MySQL:", err);
+                                    return res.status(500).json({ message: "error", error: err });
+                                });
+                            }
+
+                            return res.status(200).json({ message: "success", pm_id });
+                        });
                     });
                 });
-            });
+            } else {
+                // หาก smbuy_id และ smfree_id ว่างเปล่า ให้ยืนยันธุรกรรมโดยไม่ทำการเปลี่ยนแปลง
+                connection.commit((err) => {
+                    if (err) {
+                        return connection.rollback(() => {
+                            console.error("ข้อผิดพลาด MySQL:", err);
+                            return res.status(500).json({ message: "error", error: err });
+                        });
+                    }
+
+                    return res.status(200).json({ message: "success", pm_id });
+                });
+            }
         });
     });
 });
