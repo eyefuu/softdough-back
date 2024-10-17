@@ -2708,7 +2708,7 @@ router.get('/usedIngredients', (req, res, next) => {
         
         SELECT 
             CONCAT('PD', LPAD(pdod.pdo_id, 7, '0')) AS id,
-            induP.status,
+            induP.status, 
             NULL AS note,
             DATE_FORMAT(MAX(induP.created_at), '%Y-%m-%d') AS created_at, -- แปลงวันที่ให้เป็นรูปแบบ YYYY-MM-DD
             NULL AS updated_at,
@@ -3985,7 +3985,301 @@ async function getIngredientUsedDetails(req, res) {
 // Route สำหรับดึงข้อมูลการใช้วัตถุดิบ
 router.get('/getIngredientUsedDetails', getIngredientUsedDetails);
 
+// จุดสั่งซื้อวัตถุดิบ
+//หาเปลี่ยนวิธี sql เอาแบบที่เคยทำดึก2ตาราง ในหน้าดูวัตถุดิบที่ใช้รวม
 
+// router.get('/ingredientmini', async (req, res) => {
+//     const sql = 
+//       `SELECT 
+//         indp.*,  -- Data from ingredient_used_pro
+//         indde.*, -- Data from ingredient_lot_detail
+//         iu.*,    -- Data from ingredients_used
+//         indu.*,  -- Data from ingredient_used_detail
+//         i.*      -- Data from ingredients
+    //   FROM 
+    //     ingredient_used_pro indp
+    //   JOIN 
+    //     ingredient_lot_detail indde ON indp.indlde_id = indde.indlde_id
+//       JOIN 
+//         ingredient_used_detail indu ON indu.indlde_id = indde.indlde_id
+//       JOIN 
+//         ingredient_used iu ON iu.indu_id = indu.indu_id -- Join with ingredients_used
+//       JOIN 
+//         ingredient i ON i.ind_id = indde.ind_id 
+//       WHERE 
+//         (indp.created_at >= CURDATE() - INTERVAL 14 DAY 
+//         OR indu.created_at >= CURDATE() - INTERVAL 14 DAY)
+//       AND 
+//         indp.status = 2 -- Filter for indp status = 2
+//       AND 
+//         iu.status = 2;  -- Filter for iu status = 2`
+//     ;
+    
+//     try {
+//       // Execute the query using a connection
+//       connection.query(sql, [], (err, result) => {
+//         if (err) {
+//           console.error('Error executing query:', err);
+//           res.status(500).send('Internal server error');
+//           return;
+//         }
+  
+//         // Group the data by ind_name and format as { ind_name: '...', detail: [...] }
+//         const groupedData = result.reduce((acc, item) => {
+//           const indName = item.ind_name;
+  
+//           // Check if ind_name already exists in the accumulator
+//           const existingGroup = acc.find(group => group.ind_name === indName);
+  
+//           if (existingGroup) {
+//             // If ind_name exists, push the item to the detail array
+//             existingGroup.detail.push(item);
+//           } else {
+//             // If ind_name doesn't exist, create a new group
+//             acc.push({
+//               ind_name: indName,
+//               detail: [item]
+//             });
+//           }
+  
+//           return acc;
+//         }, []);
+  
+//         // Return the grouped result as JSON
+//         res.json(groupedData);
+//       });
+//     } catch (error) {
+//       // Catch any other errors and respond with an error message
+//       console.error('Error:', error);
+//       res.status(500).send('Internal server error');
+//     }
+//   });
+
+// router.get('/ingredientmini', async (req, res) => {
+//     const sql = 
+//       `SELECT * FROM (
+//         -- First Query for ingredient_used_pro
+//         SELECT 
+//             indp.indup_id AS id,  -- Select specific columns instead of indp.*
+//             indp.status,
+//             indp.qtyusesum AS qtyusesum,  -- Rename the column to match with the second query
+//             DATE_FORMAT(indp.created_at, '%Y-%m-%d') as created_at,
+//             indp.updated_at,
+//             'ตามล็อต' AS name,  -- Static value for 'name'
+//             'ingredient_used_pro' AS checkk,  -- Static value for 'checkk'
+//             i.ind_name  -- ind_name from ingredients table
+//         FROM 
+//             ingredient_used_pro indp
+//         JOIN 
+//             ingredient_lot_detail indde ON indp.indlde_id = indde.indlde_id
+//         JOIN          
+//             ingredient i ON i.ind_id = indde.ind_id 
+//         WHERE 
+//             indp.created_at >= CURDATE() - INTERVAL 14 DAY
+//             AND indp.status = 2
+        
+//         UNION ALL
+        
+//         -- Second Query for ingredient_used_detail
+//         SELECT 
+//             indu.indud_id AS id,  -- Select specific columns instead of indu.*
+//             iu.status,
+//             indu.qtyusesum,
+//             DATE_FORMAT(indu.created_at, '%Y-%m-%d') as created_at,
+//             indu.updated_at,
+//             'อื่นๆ' AS name,  -- Static value for 'name'
+//             'ingredient_used_detail' AS checkk,  -- Static value for 'checkk'
+//             i.ind_name  -- ind_name from ingredients table
+//         FROM 
+//             ingredient_used_detail indu
+//         JOIN 
+//             ingredient_used iu ON iu.indu_id = indu.indu_id
+//         JOIN 
+//             ingredient_lot_detail indde ON indu.indlde_id = indde.indlde_id
+//         JOIN          
+//             ingredient i ON i.ind_id = indde.ind_id 
+//         WHERE 
+//             indu.created_at >= CURDATE() - INTERVAL 14 DAY
+//             AND iu.status = 2
+//     ) AS combined_results
+//     ORDER BY created_at DESC;
+    
+//     `;
+    
+//     try {
+//       // Execute the query using a connection
+//       connection.query(sql, [], (err, result) => {
+//         if (err) {
+//           console.error('Error executing query:', err);
+//           res.status(500).send('Internal server error');
+//           return;
+//         }
+  
+//         // Group the data by ind_name and format as { ind_name: '...', detail: [...] }
+//         const groupedData = result.reduce((acc, item) => {
+//           const indName = item.ind_name;
+  
+//           // Check if ind_name already exists in the accumulator
+//           const existingGroup = acc.find(group => group.ind_name === indName);
+  
+//           if (existingGroup) {
+//             // If ind_name exists, push the item to the detail array
+//             existingGroup.detail.push(item);
+//           } else {
+//             // If ind_name doesn't exist, create a new group
+//             acc.push({
+//               ind_name: indName,
+
+//               detail: [item]
+//             });
+//           }
+  
+//           return acc;
+//         }, []);
+  
+//         // Return the grouped result as JSON
+//         res.json(groupedData);
+//       });
+//     } catch (error) {
+//       // Catch any other errors and respond with an error message
+//       console.error('Error:', error);
+//       res.status(500).send('Internal server error');
+//     }
+// });
+router.get('/ingredientmini', async (req, res) => {
+    const sql = 
+      `SELECT * FROM (
+        -- First Query for ingredient_used_pro
+        SELECT 
+            indp.indup_id AS id,  -- Select specific columns instead of indp.*
+            indp.status,
+            indp.qtyusesum AS qtyusesum,  -- Rename the column to match with the second query
+            DATE_FORMAT(indp.created_at, '%Y-%m-%d') as created_at,
+            indp.updated_at,
+            'ตามล็อต' AS name,  -- Static value for 'name'
+            'ingredient_used_pro' AS checkk,  -- Static value for 'checkk'
+            i.ind_name,  -- ind_name from ingredients table
+            i.qty_per_unit,
+            i.ind_id
+        FROM 
+            ingredient_used_pro indp
+        JOIN 
+            ingredient_lot_detail indde ON indp.indlde_id = indde.indlde_id
+        JOIN          
+            ingredient i ON i.ind_id = indde.ind_id 
+        WHERE 
+            indp.created_at >= CURDATE() - INTERVAL 14 DAY
+            AND indp.status = 2
+        
+        UNION ALL
+        
+        -- Second Query for ingredient_used_detail
+        SELECT 
+            indu.indud_id AS id,  -- Select specific columns instead of indu.*
+            iu.status,
+            indu.qtyusesum,
+            DATE_FORMAT(indu.created_at, '%Y-%m-%d') as created_at,
+            indu.updated_at,
+            'อื่นๆ' AS name,  -- Static value for 'name'
+            'ingredient_used_detail' AS checkk,  -- Static value for 'checkk'
+            i.ind_name , -- ind_name from ingredients table
+            i.qty_per_unit,
+            i.ind_id
+
+        FROM 
+            ingredient_used_detail indu
+        JOIN 
+            ingredient_used iu ON iu.indu_id = indu.indu_id
+        JOIN 
+            ingredient_lot_detail indde ON indu.indlde_id = indde.indlde_id
+        JOIN          
+            ingredient i ON i.ind_id = indde.ind_id 
+        WHERE 
+            indu.created_at >= CURDATE() - INTERVAL 14 DAY
+            AND iu.status = 2
+    ) AS combined_results
+    ORDER BY created_at DESC;
+    
+    `;
+    
+    try {
+      // Execute the query using a connection
+      connection.query(sql, [], (err, result) => {
+        if (err) {
+          console.error('Error executing query:', err);
+          res.status(500).send('Internal server error');
+          return;
+        }
+  
+        // Group the data by ind_name and calculate sumday and sumuse
+        const groupedData = result.reduce((acc, item) => {
+            const indName = item.ind_name;
+            const qty_per_unit = item.qty_per_unit;
+            const indId = item.ind_id;
+
+          
+            // Check if ind_name already exists in the accumulator
+            const existingGroup = acc.find(group => group.ind_name === indName);
+          
+            if (existingGroup) {
+              // If ind_name exists, push the item to the detail array
+              existingGroup.detail.push(item);
+              existingGroup.sumuse += item.qtyusesum;  // Add to sumuse
+              
+              // Check if the created_at date is unique before adding to sumday
+              if (!existingGroup.uniqueDates.has(item.created_at)) {
+                existingGroup.uniqueDates.add(item.created_at);
+                existingGroup.sumday += 1;  // Increment sumday
+              }
+            } else {
+              // If ind_name doesn't exist, create a new group
+              const uniqueDates = new Set([item.created_at]);  // Track unique dates
+              acc.push({
+                indId:indId,
+                ind_name: indName,
+                qty_per_unit:qty_per_unit,
+                sumuse: item.qtyusesum,  // Initialize sumuse
+                sumday: 1,  // Initialize sumday (first date)
+                detail: [item],
+                uniqueDates: uniqueDates  // Track unique dates
+              });
+            }
+          
+            return acc;
+          }, []).map(group => {
+            // Calculate the average (sumuse / sumday)
+            const average = group.sumuse / group.sumday;
+            const SafetyStock = average *1;
+            const MinimumStock = average+SafetyStock;
+            const qtyperunit = group.qty_per_unit;  
+            const MinimumqtyStock = Math.ceil(MinimumStock / qtyperunit);
+            const devind = Math.floor(MinimumStock / qtyperunit);
+            const mod = MinimumStock % qtyperunit
+            
+            // Remove the uniqueDates set before sending response
+            delete group.uniqueDates.qty_per_unit
+            
+            // Add the calculated average to the group object
+            return {
+              ...group,
+              average: average ,
+              SafetyStock :SafetyStock,
+              MinimumStock:MinimumStock,
+              MinimumqtyStock: MinimumqtyStock,
+              devind: devind,  // Calculate the deviation in index
+              mod:mod  
+            };
+          });          
+  
+        // Return the grouped result as JSON
+        res.json(groupedData);
+      });
+    } catch (error) {
+      // Catch any other errors and respond with an error message
+      console.error('Error:', error);
+      res.status(500).send('Internal server error');
+    }
+});
 
 
 

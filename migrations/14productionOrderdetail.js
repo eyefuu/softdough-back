@@ -39,7 +39,10 @@ module.exports = {
                 type: Sequelize.INTEGER,
                 allowNull: true,
             },
-            
+            pdod_stock:{
+                type: Sequelize.INTEGER,
+                allowNull: true,
+            },
             created_at: {
                 allowNull: false,
                 type: Sequelize.DATE,

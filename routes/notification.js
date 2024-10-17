@@ -575,6 +575,113 @@ async function checkAndAddNotifications(io) {
     }
 }
 
+//pd stock
+async function checkAndAddPrductNotificationsstock(io) {
+    try {
+        console.log('ใช้ io ใน checkAndAddNotifications:', io);
+        // First query to get total stock of ingredients
+        const query = `
+        SELECT 
+            ingredient.ind_id,
+            SUM(ingredient_lot_detail.qty_stock) AS total_stock,
+            ingredient.ind_name,
+            (SUM(ingredient_lot_detail.qty_stock) DIV ingredient.qty_per_unit) AS ind_stock,
+            unit1.un_name AS un_purchased_name,
+            unit2.un_name AS un_ind_name,
+            ingredient.status,
+            ingredient.qtyminimum
+        FROM 
+            ingredient 
+        LEFT JOIN 
+            unit AS unit1 ON ingredient.un_purchased = unit1.un_id
+        LEFT JOIN 
+            unit AS unit2 ON ingredient.un_ind = unit2.un_id
+        LEFT JOIN 
+            ingredient_lot_detail ON ingredient.ind_id = ingredient_lot_detail.ind_id
+        LEFT JOIN 
+            ingredient_lot ON ingredient_lot_detail.indl_id = ingredient_lot.indl_id
+        WHERE  
+            ingredient_lot.status = 2
+        AND 
+            ingredient_lot_detail.deleted_at IS NULL
+        AND
+            ingredient_lot_detail.date_exp > NOW()
+        GROUP BY 
+            ingredient_lot_detail.ind_id
+        `;
+
+        const [results] = await connection.promise().query(query);
+        console.log('results', results);
+
+        // Second query for low stock ingredients
+        const ingredientQuery = `
+          SELECT 
+            ingredient.ind_id,
+            ingredient.ind_name,
+            (SUM(ingredient_lot_detail.qty_stock) DIV ingredient.qty_per_unit) AS ind_stock,
+            ingredient.qtyminimum
+          FROM ingredient 
+          LEFT JOIN ingredient_lot_detail ON ingredient.ind_id = ingredient_lot_detail.ind_id
+          LEFT JOIN ingredient_lot ON ingredient_lot_detail.indl_id = ingredient_lot.indl_id
+          WHERE ingredient_lot.status = 2
+          AND ingredient_lot_detail.deleted_at IS NULL
+          AND ingredient_lot_detail.date_exp > NOW()
+          GROUP BY ingredient.ind_id
+          HAVING ind_stock <= ingredient.qtyminimum
+        `;
+
+        const [ingredients] = await connection.promise().query(ingredientQuery);
+
+        if (ingredients.length === 0) {
+            console.log('No low stock ingredients found');
+            return; // Exit if no low stock ingredients found
+        }
+
+        console.log('Low stock ingredients:', ingredients);
+
+        // Query to get the staff members
+        const staffQuery = `
+        SELECT st_id 
+        FROM staff 
+        WHERE st_type = 0 OR st_type = 1
+        `;
+        const [staff] = await connection.promise().query(staffQuery);
+
+        // Create a list of user IDs (st_id values)
+        const userIds = staff.map(staffMember => staffMember.st_id).join(',');
+
+        // For each ingredient with low stock, insert a new notification
+        for (const ingredient of ingredients) {
+            const notificationQuery = `
+              INSERT INTO notification (ind_id, user_id, type,qty)
+              VALUES (?, ?, 'I',?)
+            `;
+            await connection.promise().query(notificationQuery, [ingredient.ind_id, userIds, ingredient.ind_stock]);
+
+            // Optionally, send real-time notifications to users via socket.io
+            const newNotification = {
+                ind_id: ingredient.ind_id,
+                ind_name: ingredient.ind_name,
+                user_id: userIds,
+                type: 'I', // Assuming 'I' stands for ingredient notification,
+                qty: ingredient.ind_stock,
+                // createdAt: new Date()
+            };
+
+            const userList = userIds.split(',');
+            console.log(userList, 'userIds');
+            userList.forEach((user) => {
+                console.log(user, 'user');
+
+                io.to(user).emit('newNotification', newNotification);
+            });
+        }
+
+        console.log('Notifications added for low stock ingredients');
+    } catch (error) {
+        console.error('Error checking and adding notifications:', error);
+    }
+}
 
 // router.post('/markAsRead', async (req, res) => {
 //     const userId = req.body.userId;

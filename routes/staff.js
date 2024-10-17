@@ -128,7 +128,7 @@ router.post('/add', (req, res, next) => {
 //     }
 //   });
 // })
-router.get('/read', isAdmin, (req, res) => {
+router.get('/read', (req, res) => {
   const query = 'SELECT * FROM staff';
   connection.query(query, (err, results) => {
       if (err) {
@@ -139,7 +139,7 @@ router.get('/read', isAdmin, (req, res) => {
   });
 });
 
-router.get('/read/:id',isAdmin, (req, res, next) => {
+router.get('/read/:id', (req, res, next) => {
   const st_id = req.params.id;
   var query = `SELECT staff.*, 
   DATE_FORMAT(st_start, '%Y-%m-%d') AS date_start,
@@ -179,7 +179,7 @@ router.get('/read/:id',isAdmin, (req, res, next) => {
 
 //แค่ลาออก ยังไม่เทส
 
-router.patch('/updatestatus/:id', isAdmin, (req, res, next) => {
+router.patch('/updatestatus/:id', (req, res, next) => {
   const st_id = req.params.id;
   const staff = req.body;
   if (staff.st_status === 2) {
@@ -202,7 +202,7 @@ router.patch('/updatestatus/:id', isAdmin, (req, res, next) => {
 });
 
 //รวม ยังไม่เทส
-router.patch('/update/:id', isAdmin ,(req, res, next) => {
+router.patch('/update/:id' ,(req, res, next) => {
   const st_id = req.params.id;
   const staff = req.body;
 
@@ -251,3 +251,4 @@ router.patch('/update/:id', isAdmin ,(req, res, next) => {
 
 
 module.exports = router;
+
