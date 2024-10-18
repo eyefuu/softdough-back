@@ -575,113 +575,218 @@ async function checkAndAddNotifications(io) {
     }
 }
 
-//pd stock
+//เอาวันที่ยังไม่หมดอายุ
+// SELECT 
+//             pd.pd_name,
+//             pd.pd_qtyminimum,
+//             pdorde.*,        
+//             rc.qtylifetime as lifetime,
+//             DATE_ADD(pdorde.created_at, INTERVAL rc.qtylifetime DAY) as exp
+//         FROM 
+//             productionorderdetail pdorde
+//         LEFT JOIN 
+//             products AS pd ON pd.pd_id = pdorde.pd_id
+//         LEFT JOIN 
+//             recipe AS rc ON  pd.pd_id = rc.pd_id
+//         LEFT JOIN 
+//             productionorder AS pdo ON pdo.pdo_id = pdorde.pdo_id
+//         WHERE  
+//             pdo.pdo_status = 4
+//         AND 
+//             pdorde.deleted_at IS NULL
+//             AND
+//             DATE_ADD(pdorde.created_at, INTERVAL rc.qtylifetime DAY) > NOW()
+//         GROUP BY 
+//             pdorde.pd_id;
+
+//pd ใกล้หมดอายุ 2 วัน
 async function checkAndAddPrductNotificationsstock(io) {
     try {
-        console.log('ใช้ io ใน checkAndAddNotifications:', io);
+        // console.log('ใช้ io ใน checkAndAddNotifications:', io);
+
         // First query to get total stock of ingredients
         const query = `
         SELECT 
-            ingredient.ind_id,
-            SUM(ingredient_lot_detail.qty_stock) AS total_stock,
-            ingredient.ind_name,
-            (SUM(ingredient_lot_detail.qty_stock) DIV ingredient.qty_per_unit) AS ind_stock,
-            unit1.un_name AS un_purchased_name,
-            unit2.un_name AS un_ind_name,
-            ingredient.status,
-            ingredient.qtyminimum
+            pd.pd_name,
+            pd.pd_qtyminimum,
+            pdorde.*,        
+            rc.qtylifetime as lifetime,
+            DATE_ADD(pdorde.created_at, INTERVAL rc.qtylifetime DAY) as exp,
+            DATE(DATE_ADD(pdorde.created_at, INTERVAL rc.qtylifetime DAY) - INTERVAL 2 DAY) as twoexp,
+            CURDATE()
         FROM 
-            ingredient 
+            productionorderdetail pdorde
         LEFT JOIN 
-            unit AS unit1 ON ingredient.un_purchased = unit1.un_id
+            products AS pd ON pd.pd_id = pdorde.pd_id
         LEFT JOIN 
-            unit AS unit2 ON ingredient.un_ind = unit2.un_id
+            recipe AS rc ON  pd.pd_id = rc.pd_id
         LEFT JOIN 
-            ingredient_lot_detail ON ingredient.ind_id = ingredient_lot_detail.ind_id
-        LEFT JOIN 
-            ingredient_lot ON ingredient_lot_detail.indl_id = ingredient_lot.indl_id
+            productionorder AS pdo ON pdo.pdo_id = pdorde.pdo_id
         WHERE  
-            ingredient_lot.status = 2
+            pdo.pdo_status = 4
         AND 
-            ingredient_lot_detail.deleted_at IS NULL
-        AND
-            ingredient_lot_detail.date_exp > NOW()
-        GROUP BY 
-            ingredient_lot_detail.ind_id
+            pdorde.deleted_at IS NULL
+        AND 
+            DATE(DATE_ADD(pdorde.created_at, INTERVAL rc.qtylifetime DAY) - INTERVAL 2 DAY) = CURDATE()
+        and pdorde.pdod_stock > 0
         `;
 
         const [results] = await connection.promise().query(query);
         console.log('results', results);
 
-        // Second query for low stock ingredients
-        const ingredientQuery = `
-          SELECT 
-            ingredient.ind_id,
-            ingredient.ind_name,
-            (SUM(ingredient_lot_detail.qty_stock) DIV ingredient.qty_per_unit) AS ind_stock,
-            ingredient.qtyminimum
-          FROM ingredient 
-          LEFT JOIN ingredient_lot_detail ON ingredient.ind_id = ingredient_lot_detail.ind_id
-          LEFT JOIN ingredient_lot ON ingredient_lot_detail.indl_id = ingredient_lot.indl_id
-          WHERE ingredient_lot.status = 2
-          AND ingredient_lot_detail.deleted_at IS NULL
-          AND ingredient_lot_detail.date_exp > NOW()
-          GROUP BY ingredient.ind_id
-          HAVING ind_stock <= ingredient.qtyminimum
-        `;
-
-        const [ingredients] = await connection.promise().query(ingredientQuery);
-
-        if (ingredients.length === 0) {
-            console.log('No low stock ingredients found');
-            return; // Exit if no low stock ingredients found
+        if (results.length === 0) {
+            console.log('No expiring products found');
+            return; // Exit if no expiring products found
         }
 
-        console.log('Low stock ingredients:', ingredients);
-
-        // Query to get the staff members
-        const staffQuery = `
-        SELECT st_id 
-        FROM staff 
-        WHERE st_type = 0 OR st_type = 1
-        `;
-        const [staff] = await connection.promise().query(staffQuery);
-
-        // Create a list of user IDs (st_id values)
-        const userIds = staff.map(staffMember => staffMember.st_id).join(',');
-
-        // For each ingredient with low stock, insert a new notification
-        for (const ingredient of ingredients) {
-            const notificationQuery = `
-              INSERT INTO notification (ind_id, user_id, type,qty)
-              VALUES (?, ?, 'I',?)
+        for (const ingredient of results) {
+            // Query to check if a notification for this pdod_id already exists
+            const checkNotificationQuery = `
+            SELECT COUNT(*) as count 
+            FROM notification 
+            WHERE pdod_id = ?
             `;
-            await connection.promise().query(notificationQuery, [ingredient.ind_id, userIds, ingredient.ind_stock]);
+            const [notificationExists] = await connection.promise().query(checkNotificationQuery, [ingredient.pdod_id]);
 
-            // Optionally, send real-time notifications to users via socket.io
+            // If the notification already exists, skip this product
+            if (notificationExists[0].count > 0) {
+                console.log(`Notification already exists for pdod_id: ${ingredient.pdod_id}`);
+                continue;
+            }
+
+            // Query to get the staff members
+            const staffQuery = `
+            SELECT st_id 
+            FROM staff 
+            WHERE st_type = 0 OR st_type = 2
+            `;
+            const [staff] = await connection.promise().query(staffQuery);
+
+            // Create a list of user IDs (st_id values)
+            const userIds = staff.map(staffMember => staffMember.st_id).join(',');
+
+            // Insert the new notification
+            const notificationQuery = `
+              INSERT INTO notification (pdod_id, user_id, type, dateexp)
+              VALUES (?, ?, 'P', ?)
+            `;
+            await connection.promise().query(notificationQuery, [ingredient.pdod_id, userIds, ingredient.exp]);
+
+            // Create new notification object for socket.io
             const newNotification = {
-                ind_id: ingredient.ind_id,
-                ind_name: ingredient.ind_name,
+                pd_name: ingredient.pd_name,
                 user_id: userIds,
-                type: 'I', // Assuming 'I' stands for ingredient notification,
-                qty: ingredient.ind_stock,
-                // createdAt: new Date()
+                type: 'P',
+                exp: ingredient.exp,
             };
 
+            // Send real-time notifications via socket.io
             const userList = userIds.split(',');
-            console.log(userList, 'userIds');
             userList.forEach((user) => {
-                console.log(user, 'user');
-
                 io.to(user).emit('newNotification', newNotification);
             });
         }
 
-        console.log('Notifications added for low stock ingredients');
+        console.log('Notifications added for expiring products');
     } catch (error) {
         console.error('Error checking and adding notifications:', error);
     }
 }
+
+//ind ใกล้หมดอายุ 2 วัน
+async function checkAndAddIndNotificationsstock(io) {
+    try {
+        // console.log('ใช้ io ใน checkAndAddNotifications:', io);
+
+        // First query to get total stock of ingredients
+        const query = `
+        SELECT 
+            pd.pd_name,
+            pd.pd_qtyminimum,
+            pdorde.*,        
+            rc.qtylifetime as lifetime,
+            DATE_ADD(pdorde.created_at, INTERVAL rc.qtylifetime DAY) as exp,
+            DATE(DATE_ADD(pdorde.created_at, INTERVAL rc.qtylifetime DAY) - INTERVAL 2 DAY) as twoexp,
+            CURDATE()
+        FROM 
+             pdorde
+        LEFT JOIN 
+            products AS pd ON pd.pd_id = pdorde.pd_id
+        LEFT JOIN 
+            recipe AS rc ON  pd.pd_id = rc.pd_id
+        LEFT JOIN 
+            productionorder AS pdo ON pdo.pdo_id = pdorde.pdo_id
+        WHERE  
+            pdo.pdo_status = 4
+        AND 
+            pdorde.deleted_at IS NULL
+        AND 
+            DATE(DATE_ADD(pdorde.created_at, INTERVAL rc.qtylifetime DAY) - INTERVAL 2 DAY) = CURDATE()
+        and pdorde.pdod_stock > 0
+        `;
+
+        const [results] = await connection.promise().query(query);
+        console.log('results', results);
+
+        if (results.length === 0) {
+            console.log('No expiring products found');
+            return; // Exit if no expiring products found
+        }
+
+        for (const ingredient of results) {
+            // Query to check if a notification for this pdod_id already exists
+            const checkNotificationQuery = `
+            SELECT COUNT(*) as count 
+            FROM notification 
+            WHERE pdod_id = ?
+            `;
+            const [notificationExists] = await connection.promise().query(checkNotificationQuery, [ingredient.pdod_id]);
+
+            // If the notification already exists, skip this product
+            if (notificationExists[0].count > 0) {
+                console.log(`Notification already exists for pdod_id: ${ingredient.pdod_id}`);
+                continue;
+            }
+
+            // Query to get the staff members
+            const staffQuery = `
+            SELECT st_id 
+            FROM staff 
+            WHERE st_type = 0 OR st_type = 2
+            `;
+            const [staff] = await connection.promise().query(staffQuery);
+
+            // Create a list of user IDs (st_id values)
+            const userIds = staff.map(staffMember => staffMember.st_id).join(',');
+
+            // Insert the new notification
+            const notificationQuery = `
+              INSERT INTO notification (pdod_id, user_id, type, dateexp)
+              VALUES (?, ?, 'P', ?)
+            `;
+            await connection.promise().query(notificationQuery, [ingredient.pdod_id, userIds, ingredient.exp]);
+
+            // Create new notification object for socket.io
+            const newNotification = {
+                pd_name: ingredient.pd_name,
+                user_id: userIds,
+                type: 'P',
+                exp: ingredient.exp,
+            };
+
+            // Send real-time notifications via socket.io
+            const userList = userIds.split(',');
+            userList.forEach((user) => {
+                io.to(user).emit('newNotification', newNotification);
+            });
+        }
+
+        console.log('Notifications added for expiring products');
+    } catch (error) {
+        console.error('Error checking and adding notifications:', error);
+    }
+}
+
 
 // router.post('/markAsRead', async (req, res) => {
 //     const userId = req.body.userId;
@@ -761,24 +866,59 @@ router.post('/markAsRead', async (req, res) => {
 //     }
 // });
 
+
+// SELECT 
+//         notification.*, 
+//         productionorderdetail.pd_id as pdinpddo,
+//         products.pd_name as podde_pdname,
+//         ingredient.ind_name, 
+//         ingredient.ind_stock, 
+//         ingredient.qtyminimum, 
+//         DATE_FORMAT(notification.created_at, '%d-%m-%Y') AS formatted_created_at
+//     FROM 
+//         notification
+//     left JOIN 
+//         ingredient ON notification.ind_id = ingredient.ind_id
+//     left JOIN 
+//         productionorderdetail ON notification.pdod_id  = productionorderdetail.pdod_id
+//         left JOIN 
+//         products ON products.pd_id  = productionorderdetail.pd_id  
+//     WHERE 
+//         FIND_IN_SET(?, notification.user_id)
+//     ORDER BY 
+//         notification.created_at DESC;
+    
 router.get('/unread', async (req, res) => {
     const userId = req.session.st_id;
 
     try {
         const query = `
         SELECT 
-            notification.*, 
-            ingredient.ind_name, 
-            ingredient.qtyminimum,
+        notification.*, 
+        DATE_FORMAT(notification.dateexp, '%Y-%m-%d') AS dateexp,
+        DATE_FORMAT(productionorderdetail.created_at, '%Y-%m-%d') AS created_at,
+        productionorderdetail.pd_id as pdinpddo,
+        products.pd_name as podde_pdname,
+        ingredient.ind_name, 
+        ingredient.ind_stock, 
+        ingredient.qtyminimum, 
             CASE
                 WHEN notification.read_id IS NULL OR NOT FIND_IN_SET(?, notification.read_id)
                 THEN 'N'
                 ELSE 'R'
             END AS read_status
-        FROM notification
-        JOIN ingredient ON notification.ind_id = ingredient.ind_id
-        WHERE FIND_IN_SET(?, notification.user_id)
-        ORDER BY notification.created_at DESC;
+        FROM 
+            notification
+        left JOIN 
+            ingredient ON notification.ind_id = ingredient.ind_id
+        left JOIN 
+            productionorderdetail ON notification.pdod_id  = productionorderdetail.pdod_id
+            left JOIN 
+            products ON products.pd_id  = productionorderdetail.pd_id  
+        WHERE 
+            FIND_IN_SET(?, notification.user_id)
+        ORDER BY 
+            notification.created_at DESC;
     
         `;
 
@@ -795,7 +935,7 @@ router.get('/unread', async (req, res) => {
             };
         });
         res.json(notificationsWithTimeAgo);
-        console.log('Fetched notifications for user:', notificationsWithTimeAgo);
+        // console.log('Fetched notifications for user:', notificationsWithTimeAgo);
 
     } catch (error) {
         res.status(500).json({ message: 'Error fetching notifications' });
@@ -833,14 +973,20 @@ router.get('/all', async (req, res) => {
         const query = `
         SELECT 
         notification.*, 
+        productionorderdetail.pd_id as pdinpddo,
+        products.pd_name as podde_pdname,
         ingredient.ind_name, 
         ingredient.ind_stock, 
         ingredient.qtyminimum, 
         DATE_FORMAT(notification.created_at, '%d-%m-%Y') AS formatted_created_at
     FROM 
         notification
-    JOIN 
+    left JOIN 
         ingredient ON notification.ind_id = ingredient.ind_id
+    left JOIN 
+        productionorderdetail ON notification.pdod_id  = productionorderdetail.pdod_id
+        left JOIN 
+        products ON products.pd_id  = productionorderdetail.pd_id  
     WHERE 
         FIND_IN_SET(?, notification.user_id)
     ORDER BY 
@@ -859,7 +1005,7 @@ router.get('/all', async (req, res) => {
             };
         });
 
-        console.log('Fetched notifications for user:', notificationsWithTimeAgo);
+        // console.log('Fetched notifications for user:', notificationsWithTimeAgo);
         res.json(notificationsWithTimeAgo);
     } catch (error) {
         console.error('Error fetching notifications:', error);
@@ -891,4 +1037,4 @@ function calculateTimeAgo(createdAt) {
     return timeAgo;
 }
 
-module.exports = { router, checkAndAddNotifications };
+module.exports = { router, checkAndAddNotifications,checkAndAddPrductNotificationsstock };

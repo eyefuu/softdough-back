@@ -166,6 +166,7 @@ const promotionRoute = require('./routes/promotion');
 const settingRoute = require('./routes/setting');
 const notificationRouter = require('./routes/notification');
 const posRoute = require('./routes/pos')
+const checkAndAddPrductNotificationsstock = require('./routes/notification').checkAndAddPrductNotificationsstock; // Import function
 
 
 app.use('/owner', ownerRoute);
@@ -180,6 +181,16 @@ app.use('/promotion', promotionRoute);
 app.use('/setting', settingRoute);
 app.use('/notification', notificationRouter.router);
 app.use('/pos',posRoute)
+
+// checkAndAddPrductNotificationsstock(io)
+// setInterval(() => {
+//     checkAndAddPrductNotificationsstock(io);
+//     console.log('เรียกใช้ checkAndAddProductNotificationsStock')
+// }, 6000000); // 60000 มิลลิวินาที = 1 นาที
+setInterval(() => {
+    checkAndAddPrductNotificationsstock(io);
+    console.log('เรียกใช้ checkAndAddProductNotificationsStock')
+}, 10000); // 60000 มิลลิวินาที = 1 นาที
 
 app.get("/", (req, res) => {
     res.json({ message: "hello world!" });

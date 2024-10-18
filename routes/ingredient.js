@@ -2696,6 +2696,7 @@ router.get('/usedIngredients', (req, res, next) => {
             indU.status,
             indU.note,
             DATE_FORMAT(indU.created_at, '%Y-%m-%d') as created_at,
+            indU.created_at as checkdate,
             indU.updated_at,
             'ทั่วไป' AS name,
             'other' AS checkk
@@ -2711,6 +2712,7 @@ router.get('/usedIngredients', (req, res, next) => {
             induP.status, 
             NULL AS note,
             DATE_FORMAT(MAX(induP.created_at), '%Y-%m-%d') AS created_at, -- แปลงวันที่ให้เป็นรูปแบบ YYYY-MM-DD
+            induP.created_at as checkdate,
             NULL AS updated_at,
             'ผลิตตามใบสั่งผลิต' AS name,
             'production' AS checkk
@@ -2723,7 +2725,7 @@ router.get('/usedIngredients', (req, res, next) => {
             pdod.pdo_id
     ) AS combined_results
     ORDER BY 
-        created_at DESC;
+    checkdate DESC;
     
     `;
 

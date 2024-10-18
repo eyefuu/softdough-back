@@ -869,20 +869,20 @@ router.get('/readone/:pdo_id', (req, res, next) => {
         const pdo_id = req.params.pdo_id;
 
         const query = `
-            SELECT 
-                pdo.pdo_status as pdo_status,
-                pdod.broken as pdod_broken,
-                pdod.over as pdod_over,
-                CONCAT('PD', LPAD(pdo.pdo_id, 7, '0')) AS pdo_id_name,
-                DATE_FORMAT(pdo.updated_at, '%Y-%m-%d') AS updated_at_pdo,
-                pdod.*, pdc.pdc_name AS pdc_name ,pd.pd_name as pd_name
-            FROM 
-                productionorder pdo 
-                JOIN productionorderdetail pdod ON pdo.pdo_id = pdod.pdo_id 
-                JOIN products pd ON pdod.pd_id = pd.pd_id 
-                JOIN productcategory pdc ON pd.pdc_id = pdc.pdc_id 
-            WHERE 
-                pdo.pdo_id = ? AND pdod.deleted_at IS NULL`;
+        SELECT 
+        pdo.pdo_status as pdo_status,
+        pdod.broken as pdod_broken,
+        pdod.over as pdod_over,
+        CONCAT('PD', LPAD(pdo.pdo_id, 7, '0')) AS pdo_id_name,
+        DATE_FORMAT(pdo.updated_at, '%Y-%m-%d') AS updated_at_pdo,
+        pdod.*, pdc.pdc_name AS pdc_name ,pd.pd_name as pd_name
+    FROM 
+        productionorder pdo 
+        JOIN productionorderdetail pdod ON pdo.pdo_id = pdod.pdo_id 
+        JOIN products pd ON pdod.pd_id = pd.pd_id 
+        JOIN productcategory pdc ON pd.pdc_id = pdc.pdc_id 
+    WHERE 
+        pdo.pdo_id = ? AND pdod.deleted_at IS NULL`;
 
         connection.query(query, [pdo_id], (err, results) => {
             if (err) {
@@ -900,6 +900,7 @@ router.get('/readone/:pdo_id', (req, res, next) => {
                         pdod_broken:item.pdod_broken,
                         pdod_over:item.pdod_over,
                         qty: item.qty,
+                        pdod_stock:(item.qty+item.pdod_over)-item.pdod_broken,
                         status: item.status,
                         pdo_id: item.pdo_id,
                         pd_id: item.pd_id,
@@ -1342,14 +1343,14 @@ router.patch('/updatestatusdetail', (req, res, next) => {
     let hasErrorOccurred = false;
 
     pdodDetails.forEach(pdodDetail => {
-        const { pdod_id, broken, over } = pdodDetail;
+        const { pdod_id, broken, over,pdod_stock } = pdodDetail;
 
         var updateProductionOrderDetailQuery = `
             UPDATE productionorderdetail 
-            SET status = 3, broken = ?, \`over\` = ? 
+            SET status = 3, broken = ?, \`over\` = ? ,pdod_stock=?
             WHERE pdod_id = ?`;
         
-        connection.query(updateProductionOrderDetailQuery, [broken, over, pdod_id], (detailErr, detailResults) => {
+        connection.query(updateProductionOrderDetailQuery, [broken, over,pdod_stock, pdod_id], (detailErr, detailResults) => {
             if (detailErr) {
                 console.error("Error updating productionorderdetail:", detailErr);
                 if (!hasErrorOccurred) {
