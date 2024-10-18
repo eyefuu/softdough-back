@@ -701,28 +701,20 @@ async function checkAndAddIndNotificationsstock(io) {
         // First query to get total stock of ingredients
         const query = `
         SELECT 
-            pd.pd_name,
-            pd.pd_qtyminimum,
-            pdorde.*,        
-            rc.qtylifetime as lifetime,
-            DATE_ADD(pdorde.created_at, INTERVAL rc.qtylifetime DAY) as exp,
-            DATE(DATE_ADD(pdorde.created_at, INTERVAL rc.qtylifetime DAY) - INTERVAL 2 DAY) as twoexp,
-            CURDATE()
+            indlde.*, ind.*
         FROM 
-             pdorde
+            ingredient_lot_detail indlde
         LEFT JOIN 
-            products AS pd ON pd.pd_id = pdorde.pd_id
+            ingredient AS ind ON ind.ind_id = indlde.ind_id
         LEFT JOIN 
-            recipe AS rc ON  pd.pd_id = rc.pd_id
-        LEFT JOIN 
-            productionorder AS pdo ON pdo.pdo_id = pdorde.pdo_id
+            ingredient_lot AS indl ON indl.indl_id = indlde.indl_id
         WHERE  
-            pdo.pdo_status = 4
+            indl.status = 2
         AND 
-            pdorde.deleted_at IS NULL
+            indlde.deleted_at IS NULL
         AND 
-            DATE(DATE_ADD(pdorde.created_at, INTERVAL rc.qtylifetime DAY) - INTERVAL 2 DAY) = CURDATE()
-        and pdorde.pdod_stock > 0
+            DATE(DATE_SUB(date_exp, INTERVAL 2 DAY)) = CURDATE();
+    
         `;
 
         const [results] = await connection.promise().query(query);
@@ -738,13 +730,13 @@ async function checkAndAddIndNotificationsstock(io) {
             const checkNotificationQuery = `
             SELECT COUNT(*) as count 
             FROM notification 
-            WHERE pdod_id = ?
+            WHERE indlde_id = ?
             `;
-            const [notificationExists] = await connection.promise().query(checkNotificationQuery, [ingredient.pdod_id]);
+            const [notificationExists] = await connection.promise().query(checkNotificationQuery, [ingredient.indlde_id]);
 
             // If the notification already exists, skip this product
             if (notificationExists[0].count > 0) {
-                console.log(`Notification already exists for pdod_id: ${ingredient.pdod_id}`);
+                console.log(`Notification already exists for indlde_id: ${ingredient.indlde_id}`);
                 continue;
             }
 
@@ -752,7 +744,7 @@ async function checkAndAddIndNotificationsstock(io) {
             const staffQuery = `
             SELECT st_id 
             FROM staff 
-            WHERE st_type = 0 OR st_type = 2
+            WHERE st_type = 0 OR st_type = 1
             `;
             const [staff] = await connection.promise().query(staffQuery);
 
@@ -761,17 +753,17 @@ async function checkAndAddIndNotificationsstock(io) {
 
             // Insert the new notification
             const notificationQuery = `
-              INSERT INTO notification (pdod_id, user_id, type, dateexp)
-              VALUES (?, ?, 'P', ?)
+              INSERT INTO notification (indlde_id, user_id, type, dateexp)
+              VALUES (?, ?, 'L', ?)
             `;
-            await connection.promise().query(notificationQuery, [ingredient.pdod_id, userIds, ingredient.exp]);
+            await connection.promise().query(notificationQuery, [ingredient.indlde_id, userIds, ingredient.date_exp]);
 
             // Create new notification object for socket.io
             const newNotification = {
-                pd_name: ingredient.pd_name,
+                ind_name: ingredient.ind_name,
                 user_id: userIds,
-                type: 'P',
-                exp: ingredient.exp,
+                type: 'L',
+                date_exp: ingredient.date_exp,
             };
 
             // Send real-time notifications via socket.io
@@ -781,7 +773,7 @@ async function checkAndAddIndNotificationsstock(io) {
             });
         }
 
-        console.log('Notifications added for expiring products');
+        console.log('Notifications added for expiring ');
     } catch (error) {
         console.error('Error checking and adding notifications:', error);
     }
@@ -896,12 +888,17 @@ router.get('/unread', async (req, res) => {
         SELECT 
         notification.*, 
         DATE_FORMAT(notification.dateexp, '%Y-%m-%d') AS dateexp,
-        DATE_FORMAT(productionorderdetail.created_at, '%Y-%m-%d') AS created_at,
+        DATE_FORMAT(productionorderdetail.created_at, '%Y-%m-%d') AS pcreated_at,
         productionorderdetail.pd_id as pdinpddo,
         products.pd_name as podde_pdname,
         ingredient.ind_name, 
         ingredient.ind_stock, 
         ingredient.qtyminimum, 
+        ingredient_lot_detail.indlde_id ,
+        DATE_FORMAT(ingredient_lot_detail.date_exp, '%Y-%m-%d') AS indlexp,
+        ind.ind_name as nameindlot,
+        CONCAT('L', LPAD(ingredient_lot_detail.indl_id, 7, '0')) AS indl_id_name,
+
             CASE
                 WHEN notification.read_id IS NULL OR NOT FIND_IN_SET(?, notification.read_id)
                 THEN 'N'
@@ -913,8 +910,13 @@ router.get('/unread', async (req, res) => {
             ingredient ON notification.ind_id = ingredient.ind_id
         left JOIN 
             productionorderdetail ON notification.pdod_id  = productionorderdetail.pdod_id
-            left JOIN 
+        left JOIN 
             products ON products.pd_id  = productionorderdetail.pd_id  
+        left JOIN 
+            ingredient_lot_detail ON ingredient_lot_detail.indlde_id   = notification.indlde_id   
+        left JOIN 
+            ingredient as ind ON ind.ind_id   = ingredient_lot_detail.ind_id   
+        
         WHERE 
             FIND_IN_SET(?, notification.user_id)
         ORDER BY 
@@ -939,6 +941,7 @@ router.get('/unread', async (req, res) => {
 
     } catch (error) {
         res.status(500).json({ message: 'Error fetching notifications' });
+        console.error('Error fetching notifications:', error);
     }
 });
 
@@ -970,23 +973,56 @@ router.get('/all', async (req, res) => {
     const userId = req.session.st_id; // หรือใช้ req.user.id ถ้ามีการใช้ middleware สำหรับการยืนยันตัวตน
 
     try {
+    //     const query = `
+    //     SELECT 
+    //     notification.*, 
+    //     productionorderdetail.pd_id as pdinpddo,
+    //     products.pd_name as podde_pdname,
+    //     ingredient.ind_name, 
+    //     ingredient.ind_stock, 
+    //     ingredient.qtyminimum, 
+    //     DATE_FORMAT(notification.created_at, '%d-%m-%Y') AS formatted_created_at
+    // FROM 
+    //     notification
+    // left JOIN 
+    //     ingredient ON notification.ind_id = ingredient.ind_id
+    // left JOIN 
+    //     productionorderdetail ON notification.pdod_id  = productionorderdetail.pdod_id
+    // left JOIN 
+    //     products ON products.pd_id  = productionorderdetail.pd_id  
+    // WHERE 
+    //     FIND_IN_SET(?, notification.user_id)
+    // ORDER BY 
+    //     notification.created_at DESC;
+    
+    //     `;
         const query = `
         SELECT 
         notification.*, 
+        DATE_FORMAT(notification.dateexp, '%Y-%m-%d') AS dateexp,
+        DATE_FORMAT(productionorderdetail.created_at, '%Y-%m-%d') AS pcreated_at,
         productionorderdetail.pd_id as pdinpddo,
         products.pd_name as podde_pdname,
         ingredient.ind_name, 
         ingredient.ind_stock, 
         ingredient.qtyminimum, 
-        DATE_FORMAT(notification.created_at, '%d-%m-%Y') AS formatted_created_at
-    FROM 
+        ingredient_lot_detail.indlde_id , 
+        DATE_FORMAT(ingredient_lot_detail.date_exp, '%Y-%m-%d') AS indlexp,
+        DATE_FORMAT(notification.created_at, '%d-%m-%Y') AS formatted_created_at,
+        ind.ind_name as nameindlot,
+        CONCAT('L', LPAD(ingredient_lot_detail.indl_id, 7, '0')) AS indl_id_name
+     FROM 
         notification
     left JOIN 
         ingredient ON notification.ind_id = ingredient.ind_id
     left JOIN 
         productionorderdetail ON notification.pdod_id  = productionorderdetail.pdod_id
-        left JOIN 
+    left JOIN 
         products ON products.pd_id  = productionorderdetail.pd_id  
+    left JOIN 
+        ingredient_lot_detail ON ingredient_lot_detail.indlde_id   = notification.indlde_id   
+    left JOIN 
+        ingredient as ind ON ind.ind_id   = ingredient_lot_detail.ind_id   
     WHERE 
         FIND_IN_SET(?, notification.user_id)
     ORDER BY 
@@ -1037,4 +1073,4 @@ function calculateTimeAgo(createdAt) {
     return timeAgo;
 }
 
-module.exports = { router, checkAndAddNotifications,checkAndAddPrductNotificationsstock };
+module.exports = { router, checkAndAddNotifications,checkAndAddPrductNotificationsstock ,checkAndAddIndNotificationsstock};
