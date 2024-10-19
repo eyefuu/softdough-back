@@ -166,6 +166,8 @@ const promotionRoute = require('./routes/promotion');
 const settingRoute = require('./routes/setting');
 const notificationRouter = require('./routes/notification');
 const posRoute = require('./routes/pos')
+const dashRoute = require('./routes/dash')
+
 const checkAndAddPrductNotificationsstock = require('./routes/notification').checkAndAddPrductNotificationsstock; // Import function
 const checkAndAddIndNotificationsstock = require('./routes/notification').checkAndAddIndNotificationsstock; // Import function
 
@@ -180,7 +182,9 @@ app.use('/expenses', expensesRoute);
 app.use('/promotion', promotionRoute);
 app.use('/setting', settingRoute);
 app.use('/notification', notificationRouter.router);
-app.use('/pos',posRoute)
+app.use('/pos',posRoute);
+app.use('/dash',dashRoute)
+
 
 // checkAndAddPrductNotificationsstock(io)
 // setInterval(() => {

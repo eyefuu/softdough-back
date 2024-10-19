@@ -311,6 +311,7 @@ router.get('/latest', (req, res, next) => {
 
 //dash
 
+
 //ขายดีรวม
 // async function getOrderDetails(req, res) {
 //     try {
@@ -418,89 +419,7 @@ router.get('/latest', (req, res, next) => {
 //         res.status(500).json({ message: 'Server error' });
 //     }
 // }
-async function getOrderDetails(req, res) {
-    try {
-        const { startDate, endDate } = req.query;
 
-        const sql = `
-        SELECT 
-            DATE_FORMAT(o.created_at, '%Y-%m-%d') AS ocreated_at,
-            od.odde_sum,
-            od.odde_qty,
-            od.odde_id,
-            od.od_id,
-            s.sm_id,
-            s.sm_name,
-            st.smt_name,
-            ot.odt_name
-        FROM orderdetail od
-        JOIN \`order\` o ON o.od_id = od.od_id  
-        JOIN salesmenu s ON s.sm_id = od.sm_id  
-        LEFT JOIN salesmenutype st ON s.smt_id = st.smt_id      
-        LEFT JOIN orderstype ot ON ot.odt_id = o.odt_id          
-    
-        WHERE DATE(o.created_at) BETWEEN ? AND ?
-        `;
-    
-        connection.query(sql, [startDate, endDate], (err, results) => {
-            if (err) {
-                console.error('Error executing query:', err);
-                return res.status(500).json({ message: 'Database query failed' });
-            } else {
-                // Grouping results based on sm_id and other properties
-                const groupedResults = results.reduce((acc, row) => {
-                    const { sm_id, sm_name, smt_name, odde_sum, odde_id, odde_qty, od_id, ocreated_at,odt_name } = row;
-
-                    // Find if sm_id already exists in acc
-                    let sm = acc.find(item => item.sm_id === sm_id);
-
-                    if (!sm) {
-                        // If sm_id not found, create a new entry for the salesmenu
-                        sm = {
-                            sm_id: sm_id,
-                            sm_name: sm_name,
-                            smt_name: smt_name,
-                            totalprice: 0,  // Initialize total price
-                            totalqty: 0,    // Initialize total quantity
-                            orderdetail: []
-                        };
-                        acc.push(sm);
-                    }
-
-                    // Find if this orderdetail already exists in the orderdetail array
-                    let orderdetailEntry = sm.orderdetail.find(item => item.odde_id === odde_id);
-
-                    if (!orderdetailEntry) {
-                        // If not found, add a new orderdetail entry
-                        orderdetailEntry = {
-                            odt_name:odt_name,
-                            odde_id: odde_id,
-                            odde_sum: odde_sum,
-                            odde_qty: odde_qty,
-                            od_id: od_id,
-                            ocreated_at: ocreated_at
-                        };
-                        sm.orderdetail.push(orderdetailEntry);
-                    }
-
-                    // Update the total price and quantity
-                    sm.totalprice += parseFloat(odde_sum);
-                    sm.totalqty += parseInt(odde_qty, 10);
-
-                    return acc;
-                }, []);
-
-                // Send the grouped results back to the client
-                res.status(200).json(groupedResults);
-            }
-        });
-    } catch (error) {
-        console.error('Error fetching order details:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-}
-
-router.get('/getOrderDetails', getOrderDetails);
 
 
 module.exports = router;
