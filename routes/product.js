@@ -7,11 +7,11 @@ const multer = require('multer');
 const router = express.Router();
 const upload = multer();
 
-const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder ,isAdminUserOrder} = require('../middleware')
+const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder, isAdminUserOrder } = require('../middleware')
 
 
 
-router.post('/addcat',(req, res, next) => {
+router.post('/addcat', (req, res, next) => {
     let cat = req.body;
     query = "insert into productCategory (pdc_name) values(?)";
     connection.query(query, [cat.pdc_name], (err, results) => {
@@ -36,7 +36,7 @@ router.get('/readcat', (req, res, next) => {
 })
 
 
-router.patch('/updatecat/:pdc_id',(req, res, next) => {
+router.patch('/updatecat/:pdc_id', (req, res, next) => {
     const pdc_id = req.params.pdc_id;
     const sm = req.body;
     var query = "UPDATE productCategory SET pdc_name=? WHERE pdc_id=?";
@@ -598,7 +598,7 @@ const sharp = require('sharp');
 
 //+recipe 
 //ถ้าจะมีปห น่าจะมีแค่พวก detail ที่ส่งเป็นลิสท์ จาห tsx
-router.post('/addProductWithRecipe', upload.single('picture'),async (req, res) => {
+router.post('/addProductWithRecipe', upload.single('picture'), async (req, res) => {
     const { pd_name, pd_qtyminimum, status, pdc_id, recipe, recipedetail } = req.body;
     const imageBuffer = req.file && req.file.buffer ? req.file.buffer : null;
 
@@ -845,7 +845,7 @@ router.post('/addProductWithRecipe', upload.single('picture'),async (req, res) =
 
 //read
 
-router.get('/products/:pd_id',async (req, res) => {
+router.get('/products/:pd_id', async (req, res) => {
     const productId = req.params.pd_id;
 
     try {
@@ -919,7 +919,7 @@ router.get('/pdset/:pd_id', async (req, res, next) => {
 
                     recipedetail: filteredResults.map(item => ({
                         ingredients_qty: item.ingredients_qty,
-                        ind_id: item.ind_id ,
+                        ind_id: item.ind_id,
                         un_id: item.un_id,
                         ind_name: item.ind_name
                     }))
@@ -943,7 +943,7 @@ router.get('/pdset/:pd_id', async (req, res, next) => {
     }
 });
 
-router.get('/productsall',async (req, res, next) => {
+router.get('/productsall', async (req, res, next) => {
     try {
         var query = `SELECT pd.* , rc.* 
             FROM products pd 
@@ -1163,7 +1163,7 @@ router.get('/productsall',async (req, res, next) => {
 // });
 //ลอง เงื่อนไข ยังมีปัญหากรณีทั้งแอด ลบ อัปเดต ใน req เดียว
 // ได้แยะ
-router.patch('/editProductWithRecipe/:pd_id',upload.single('picture'), async (req, res) => {
+router.patch('/editProductWithRecipe/:pd_id', upload.single('picture'), async (req, res) => {
     const pd_id = req.params.pd_id;
 
     const { pd_name, pd_qtyminimum, status, pdc_id, recipe, recipedetail } = req.body;
@@ -1263,16 +1263,16 @@ router.patch('/editProductWithRecipe/:pd_id',upload.single('picture'), async (re
 
                                 recipedetail.forEach(detail => {
                                     const { ind_id, ingredients_qty, un_id } = detail;
-                            
+
                                     // Check if ind_id is defined and not null
                                     if (ind_id !== undefined && ind_id !== null) {
-                                        if (indIdsToUpdate.includes(ind_id)){
+                                        if (indIdsToUpdate.includes(ind_id)) {
                                             updateData.push(detail);
-                                            console.log("updateData",updateData)
+                                            console.log("updateData", updateData)
                                         }
-                                        if (indIdsToAdd.includes(ind_id)){
+                                        if (indIdsToAdd.includes(ind_id)) {
                                             insertData.push(detail);
-                                            console.log("insertData",insertData)
+                                            console.log("insertData", insertData)
                                         }
                                         // if (indIdsToDelete.includes(ind_id)){
                                         //     deleteData.push(detail);
@@ -1280,7 +1280,7 @@ router.patch('/editProductWithRecipe/:pd_id',upload.single('picture'), async (re
                                         // }
                                     }
                                 });
-                            
+
 
 
                                 // Update recipedetail records
@@ -1297,17 +1297,17 @@ router.patch('/editProductWithRecipe/:pd_id',upload.single('picture'), async (re
                                     // Update recipedetail records for each detail
 
                                     updateData.forEach(detail => {
-                                        console.log("updateDatade",detail)
-                                    const { ind_id, ingredients_qty, un_id } = detail;
-                                    const updateQuery = `UPDATE recipedetail SET ingredients_qty = ?, un_id = ?, deleted_at = NULL WHERE rc_id = ? AND ind_id = ?`;
-                                    // Execute the update query for each detail
-                                    connection.query(updateQuery, [ingredients_qty, un_id, rcId, ind_id], (err, updateResult) => {
-                                        if (err) {
-                                            connection.rollback(() => {
-                                                return res.status(500).json({ message: 'Error updating recipedetail', error: err });
-                                            });
-                                        }
-                                    });
+                                        console.log("updateDatade", detail)
+                                        const { ind_id, ingredients_qty, un_id } = detail;
+                                        const updateQuery = `UPDATE recipedetail SET ingredients_qty = ?, un_id = ?, deleted_at = NULL WHERE rc_id = ? AND ind_id = ?`;
+                                        // Execute the update query for each detail
+                                        connection.query(updateQuery, [ingredients_qty, un_id, rcId, ind_id], (err, updateResult) => {
+                                            if (err) {
+                                                connection.rollback(() => {
+                                                    return res.status(500).json({ message: 'Error updating recipedetail', error: err });
+                                                });
+                                            }
+                                        });
                                     });
 
                                 }
@@ -1329,11 +1329,11 @@ router.patch('/editProductWithRecipe/:pd_id',upload.single('picture'), async (re
                                 //     });
                                 // }
                                 if (insertData.length > 0) {
-            
+
                                     const insertQuery = "INSERT INTO recipedetail (rc_id, ind_id, ingredients_qty, un_id,deleted_at) VALUES (?,?,?,?,?)";
-                        
+
                                     const flattenedineData = insertData.flat();
-                        
+
                                     flattenedineData.forEach(detail => {
                                         const insertValues = [
                                             rcId,
@@ -1342,7 +1342,7 @@ router.patch('/editProductWithRecipe/:pd_id',upload.single('picture'), async (re
                                             detail.un_id,
                                             null // กำหนดให้ deleted_at เป็น null
                                         ];
-                        
+
                                         connection.query(insertQuery, insertValues, (err, results) => {
                                             if (err) {
                                                 connection.rollback(() => {
@@ -1352,23 +1352,23 @@ router.patch('/editProductWithRecipe/:pd_id',upload.single('picture'), async (re
                                         });
                                     });
                                 }
-                        
-                        
-                                
+
+
+
 
                                 // // Soft delete recipedetail records
                                 if (indIdsToDelete.length > 0) {
                                     indIdsToDelete.forEach(detail => {
-                                    const softDeleteQuery = `UPDATE recipedetail SET deleted_at = CURRENT_TIMESTAMP WHERE rc_id = ? AND ind_id IN (?)`;
-                                    // Soft delete existing records in recipedetail table
-                                    connection.query(softDeleteQuery, [rcId, detail], (err, deleteResult) => {
-                                        if (err) {
-                                            connection.rollback(() => {
-                                                return res.status(500).json({ message: 'Error soft deleting recipedetail records', error: err });
-                                            });
-                                        }
+                                        const softDeleteQuery = `UPDATE recipedetail SET deleted_at = CURRENT_TIMESTAMP WHERE rc_id = ? AND ind_id IN (?)`;
+                                        // Soft delete existing records in recipedetail table
+                                        connection.query(softDeleteQuery, [rcId, detail], (err, deleteResult) => {
+                                            if (err) {
+                                                connection.rollback(() => {
+                                                    return res.status(500).json({ message: 'Error soft deleting recipedetail records', error: err });
+                                                });
+                                            }
+                                        });
                                     });
-                                });
                                 }
                             });
 
@@ -1444,44 +1444,187 @@ router.patch('/editProductWithRecipe/:pd_id',upload.single('picture'), async (re
 
 // คำนวณหาสต็อกวัตถุดิบขั้นต่ำ
 //เอา sql มาแปะไว้ก่อน
+// router.get('/productmini', async (req, res) => {
+//   const sql = `  SELECT 
+//                     p.pd_name, 
+//                     odsm.qty AS order_qty,
+//                     pod.qty AS promo_qty, -- สมมติว่าตาราง promotionOrderDetail มีคอลัมน์ปริมาณ (ปรับตามความเหมาะสม)
+//                     o.od_date
+//                 FROM 
+//                     orderdetailSalesMenu odsm
+//                 JOIN 
+//                     orderdetail od ON odsm.odde_id = od.odde_id
+//                 JOIN 
+//                     "order" o ON od.od_id = o.od_id
+//                 JOIN 
+//                     products p ON p.pd_id = odsm.pdod_id -- สมมติว่า pdod_id ใน orderdetailSalesMenu เชื่อมโยงกับ pd_id ใน product
+//                 LEFT JOIN 
+//                     promotionOrderDetail pod ON pod.pdod_id = odsm.pdod_id -- เชื่อมโยง promotionOrderDetail เพื่อดึงข้อมูลโปรโมชั่น
+//                 WHERE 
+//                     o.od_date >= CURDATE() - INTERVAL 14 DAY;
+// `; 
+//   try {
+//     // Use parameterized queries to prevent SQL injection
+//     connection.query(sql, [], (err, result) => {
+//       if (err) {
+//         console.error('Error executing query:', err);
+//         res.status(500).send('Internal server error');
+//         return;
+//       }
+//       res.json(result);
+//     });
+//   } catch (error) {
+//     console.error('Error:', error);
+//     res.status(500).send('Internal server error');
+//   }
+// });
+
+
+
+//ขั้นต่ำ
 router.get('/productmini', async (req, res) => {
-  const sql = `  SELECT 
-                    p.pd_name, 
-                    odsm.qty AS order_qty,
-                    pod.qty AS promo_qty, -- สมมติว่าตาราง promotionOrderDetail มีคอลัมน์ปริมาณ (ปรับตามความเหมาะสม)
-                    o.od_date
-                FROM 
-                    orderdetailSalesMenu odsm
-                JOIN 
-                    orderdetail od ON odsm.odde_id = od.odde_id
-                JOIN 
-                    "order" o ON od.od_id = o.od_id
-                JOIN 
-                    products p ON p.pd_id = odsm.pdod_id -- สมมติว่า pdod_id ใน orderdetailSalesMenu เชื่อมโยงกับ pd_id ใน product
-                LEFT JOIN 
-                    promotionOrderDetail pod ON pod.pdod_id = odsm.pdod_id -- เชื่อมโยง promotionOrderDetail เพื่อดึงข้อมูลโปรโมชั่น
-                WHERE 
-                    o.od_date >= CURDATE() - INTERVAL 14 DAY;
-`;
-  
-  try {
-    // Use parameterized queries to prevent SQL injection
-    connection.query(sql, [], (err, result) => {
-      if (err) {
-        console.error('Error executing query:', err);
+    const sql =
+        `
+      SELECT * FROM (
+        -- First Query for ingredient_used_pro
+        SELECT 
+            odsm.qty as qtyusesum,  -- Select specific columns instead of indp.*
+            pd.pd_name,           
+            pd.pd_id,
+            odsm.odde_sm_id  as id,
+            DATE_FORMAT(o.od_date, '%Y-%m-%d') as date,
+            'สินค้าหลัก' AS name  -- Static value for 'name'
+        
+        FROM 
+            orderdetailsalesmenu odsm
+        JOIN 
+            orderdetail od ON odsm.odde_id = od.odde_id
+        JOIN          
+            \`order\` o ON o.od_id = od.od_id 
+        JOIN          
+            productionorderdetail pdod ON pdod.pdod_id = odsm.pdod_id 
+        JOIN          
+            products pd ON pdod.pd_id = pd.pd_id 
+        WHERE 
+        o.od_date >= CURDATE() - INTERVAL 14 DAY
+        AND o.od_status = 1
+        
+        UNION ALL
+        
+        -- Second Query for ingredient_used_detail
+        SELECT 
+            pmod.qty as qtyusesum,
+            pd.pd_name,
+            pd.pd_id,
+            pmod.pmod_id as id,
+            DATE_FORMAT(o.od_date, '%Y-%m-%d') as date,
+            'ของแถม' AS name  -- Static value for 'name'
+        FROM 
+            promotionorderdetail pmod
+        JOIN 
+            orderdetail od ON pmod.odde_id = od.odde_id
+        JOIN          
+            \`order\` o ON o.od_id = od.od_id 
+        JOIN          
+            productionorderdetail pdod ON pdod.pdod_id = pmod.pdod_id 
+        JOIN          
+            products pd ON pdod.pd_id = pd.pd_id 
+        WHERE 
+            o.od_date >= CURDATE() - INTERVAL 14 DAY
+        AND o.od_status = 1
+    ) AS combined_results
+    ORDER BY date DESC;
+    
+    `;
+
+    try {
+        // Execute the query using a connection
+        connection.query(sql, [], (err, result) => {
+            if (err) {
+                console.error('Error executing query:', err);
+                res.status(500).send('Internal server error');
+                return;
+            }
+    
+            // Group the data by ind_name and calculate sumday and sumuse
+            const groupedData = result.reduce((acc, item) => {
+                const pdName = item.pd_name;
+                const qty = item.qtyusesum || 0;
+                const pdId = item.pd_id;
+            
+                // Find if there's already a group for this pd_name
+                const existingGroup = acc.find(group => group.pdName === pdName);
+                if (existingGroup) {
+                    // If group exists, add item to detail and update sumqty
+                    existingGroup.detail.push(item);
+                    existingGroup.sumqty += qty;
+            
+                    // Create or update a map that sums qtyusesum per day
+                    if (existingGroup.dailyTotals[item.date]) {
+                        existingGroup.dailyTotals[item.date] += qty; // Add to existing date
+                    } else {
+                        existingGroup.dailyTotals[item.date] = qty; // New date entry
+                    }
+            
+                    // Update sumday only if the date is unique
+                    if (!existingGroup.uniqueDates.has(item.date)) {
+                        existingGroup.uniqueDates.add(item.date);
+                        existingGroup.sumday += 1;
+                    }
+                } else {
+                    // If group doesn't exist, create a new group
+                    const uniqueDates = new Set([item.date]);
+                    acc.push({
+                        pdId: pdId,
+                        pdName: pdName,
+                        sumqty: qty,
+                        sumday: 1,  // Initialize sumday with 1 for the first date
+                        detail: [item],
+                        uniqueDates: uniqueDates,
+                        dailyTotals: { [item.date]: qty } // Initialize dailyTotals map
+                    });
+                }
+            
+                return acc;
+            }, [])
+            .map(group => {
+                // Calculate the maximum quantity sold on any single day
+                const dailyTotalsArray = Object.values(group.dailyTotals); // Get the daily totals as an array
+                console.log(dailyTotalsArray, 'dailyTotals')
+                const maxQty = Math.max(...dailyTotalsArray); // Find the max of daily totals
+            
+                // Calculate the average and other metrics after grouping
+                const average = group.sumqty / group.sumday || 0; // Ensure average has a default value (0)
+            
+                // Safety Stock calculation
+                const SafetyStock = (maxQty * 1) - (average * 1);
+            
+                // Ensure SafetyStock is not NaN or null by checking if average and maxQty are valid
+                const validSafetyStock = isNaN(SafetyStock) ? 0 : SafetyStock;
+            
+                delete group.uniqueDates;
+                delete group.dailyTotals;
+            
+                return {
+                    ...group,
+                    average: average || 0,
+                    maxQty: maxQty, // Add maxQty to the final output
+                    SafetyStock: validSafetyStock  // Use the validSafetyStock to avoid null values
+                };
+            });
+            
+            
+            
+
+            // Return the grouped result as JSON
+            res.json(groupedData);
+        });
+    } catch (error) {
+        // Catch any other errors and respond with an error message
+        console.error('Error:', error);
         res.status(500).send('Internal server error');
-        return;
-      }
-      res.json(result);
-    });
-  } catch (error) {
-    console.error('Error:', error);
-    res.status(500).send('Internal server error');
-  }
+    }
 });
-
-
-
 
 
 

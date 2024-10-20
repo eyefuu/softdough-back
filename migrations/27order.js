@@ -18,7 +18,9 @@ module.exports = {
                 type: Sequelize.FLOAT
             },
             od_discounttotal: {
-                type: Sequelize.FLOAT
+                type: Sequelize.FLOAT,
+                allowNull: true,
+
             },
             od_net: {
                 type: Sequelize.FLOAT            

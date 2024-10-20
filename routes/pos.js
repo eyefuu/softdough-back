@@ -4,6 +4,7 @@ const router = express.Router();
 const puppeteer = require('puppeteer'); // นำเข้า Puppeteer
 const fs = require('fs');
 const path = require('path');
+const ejs = require('ejs');
 
 
 // เปลี่ยนราคา
@@ -109,7 +110,7 @@ router.get('/sm/:sm_id', (req, res, next) => {
     const sm_id = Number(req.params.sm_id);
 
     var query = `
-    SELECT sm.*, smt.*, smd.*, p.pd_name,
+    SELECT sm.*, smt.*, smd.*, p.pd_name,pc.pdc_name,
            CASE 
                WHEN sm.fix = '2' THEN p.pd_name 
                ELSE NULL 
@@ -118,6 +119,7 @@ router.get('/sm/:sm_id', (req, res, next) => {
     JOIN salesmenu sm ON sm.smt_id = smt.smt_id 
     JOIN salesmenudetail smd ON sm.sm_id = smd.sm_id 
     LEFT JOIN products p ON smd.pd_id = p.pd_id  
+    JOIN productcategory pc ON p.pdc_id = pc.pdc_id
     WHERE sm.sm_id = ? 
       AND smd.deleted_at IS NULL`;
 
@@ -135,11 +137,9 @@ router.get('/sm/:sm_id', (req, res, next) => {
 
 
 // puppeteer ยังบ่แล้ว เทส
+// Generate the PDF and save it with a dynamic name
 router.post('/generate-pdf', async (req, res, next) => {
-    // const { orderData } = req.body; // รับข้อมูลจาก body ของคำขอ
-
     try {
-        // const browser = await puppeteer.launch({ headless: true });
         const browser = await puppeteer.launch({
             headless: true,
             args: ['--no-sandbox', '--disable-setuid-sandbox'],
@@ -148,45 +148,27 @@ router.post('/generate-pdf', async (req, res, next) => {
         const page = await browser.newPage();
         const orderData = req.body;
 
-        // สร้างเนื้อหา HTML ตาม orderData
-        const pdfContent = `
-        <html>
-            <head>
-                <title>Order Summary</title>
-            </head>
-            <body>
-                <h1>Order Summary</h1>
-                <p>Date: ${orderData.od_date}</p>
-                <p>Total: ${orderData.od_sumdetail}</p>
-                <p>Payment Type: ${orderData.od_paytype}</p>
-                <p>Change: ${orderData.od_change}</p>
-            </body>
-        </html>
-    `;
-        await page.setContent(pdfContent);
-        // const pdf = await page.pdf({
-        //     path: 'document.pdf',
+        const htmlTemplate = fs.readFileSync(path.join(__dirname, '../public/generate.html'), 'utf8');
+        const html = ejs.render(htmlTemplate, orderData);
 
-        //     format: 'A4',
-        //     printBackground: true,
-        //     margin: { top: '20px', bottom: '20px', left: '10px', right: '10px' } // ลองเพิ่มขอบ
-        // });
-
-        const pdf = await page.pdf({
+        await page.setContent(html);
+        const pdfBuffer = await page.pdf({
             format: 'A4',
             printBackground: true,
             margin: { top: '20px', bottom: '20px', left: '10px', right: '10px' }
         });
         await browser.close();
 
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', 'inline; filename="document.pdf"');
+        // Generate a unique filename for the PDF
+        const uniqueFileName = `document-${Date.now()}.pdf`;
+        const filePath = path.join(__dirname, '../public', uniqueFileName);
+        fs.writeFileSync(filePath, pdfBuffer);
+        console.log('PDF file saved successfully at:', filePath);
 
-        res.send(pdf);
-        console.log("ตรวจสอบ", pdf); // ตรวจสอบข้อมูล PDF ที่สร้างขึ้น
-
+        // Redirect to PDF viewer route with the unique filename
+        res.redirect(`/pdf-viewer?filename=${uniqueFileName}`);
     } catch (error) {
-        console.error('Detailed error:', error);
+        console.error('Error generating PDF:', error);
         return res.status(500).json({
             message: 'Error generating PDF',
             error: error.message,
@@ -195,71 +177,225 @@ router.post('/generate-pdf', async (req, res, next) => {
     }
 });
 
+// Serve the generated PDF
+router.get('/pdf-viewer', (req, res) => {
+    const { filename } = req.query;
+    const filePath = path.join(__dirname, '../public', filename); // Adjust path as needed
+
+    if (fs.existsSync(filePath)) {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+        res.sendFile(filePath);
+    } else {
+        res.status(404).json({ error: 'PDF file not found' });
+    }
+});
 
 // Save order
-router.post('/order', async (req, res, next) => {
-    const userId = req.session.st_id; // ดึง user_id จาก session
-    console.log(req.session)
-    const { od_date,
-        od_qtytotal,
-        od_sumdetail,
-        od_discounttotal,
-        od_paytype,
-        od_net,
-        od_pay,
-        od_change,
-        od_status,
-        note,
-        sh_id,
-        odt_id,
-        dc_id,
-        user_id,
-        selectedItems } = req.body;
-    const values = [
-        od_date,
-        od_qtytotal,
-        od_sumdetail,
-        od_discounttotal,
-        od_paytype,
-        od_net,
-        od_pay,
-        od_change,
-        od_status,
-        note,
-        sh_id,
-        odt_id,
-        dc_id,
-        userId // Assuming you also want to store user ID
+// router.post('/order', async (req, res, next) => {
+//     const userId = req.session.st_id; // ดึง user_id จาก session
+//     console.log(req.session)
+//     const { od_date,
+//         od_qtytotal,
+//         od_sumdetail,
+//         od_discounttotal,
+//         od_paytype,
+//         od_net,
+//         od_pay,
+//         od_change,
+//         od_status,
+//         note,
+//         sh_id,
+//         odt_id,
+//         dc_id,
+//         user_id,
+//         selectedItems } = req.body;
+//     const values = [
+//         od_date,
+//         od_qtytotal,
+//         od_sumdetail,
+//         od_discounttotal,
+//         od_paytype,
+//         od_net,
+//         od_pay,
+//         od_change,
+//         od_status,
+//         note,
+//         sh_id,
+//         odt_id,
+//         dc_id ? dc_id : null, // Set to null if not provided
+//         userId // Assuming you also want to store user ID
+//     ];
+//     const query = `INSERT INTO \`order\`(od_date, od_qtytotal, od_sumdetail, od_discounttotal, od_paytype, od_net, od_pay, od_change, od_status, note, sh_id, odt_id, dc_id, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
+//     connection.query(query, values, (err, results) => {
+//         if (!err) {
+//             const detailQuery = `
+//             INSERT INTO orderdetail (
+//                 od_id, sm_id, odde_qty, odde_sum) VALUES ?;
+//         `;
+//             const detailValues = selectedItems.map(detail => [
+//                 results.insertId,
+//                 detail.sm_id,
+//                 detail.quantity,
+//                 detail.quantity * detail.sm_price,
+//             ]);    
+//             connection.query(detailQuery, [detailValues], (err, resultsAll) => {
+//                 if (!err) {
+//                     return res.status(200).json({ message: "success" });
+//                 } else {
+//                     console.error("MySQL Error detail:", err);
+//                     return res.status(500).json({ message: "error detail", error: err });
+//                 }
+//             });
+
+//         } else {
+//             console.error("MySQL Error:", err);
+//             return res.status(500).json({ message: "error", error: err });
+//         }
+//     });
+
+// })
+
+
+
+
+// เทสหักสต้อก คือต้องทำใหม่
+router.post('/order', async (req, res) => {
+    const userId = req.session.st_id;
+    const {
+        od_date, od_qtytotal, od_sumdetail, od_discounttotal, od_paytype,
+        od_net, od_pay, od_change, od_status, note, sh_id, odt_id, dc_id,
+        selectedItems, freeItems
+    } = req.body;
+
+    const orderValues = [
+        od_date, od_qtytotal, od_sumdetail, od_discounttotal, od_paytype,
+        od_net, od_pay, od_change, od_status, note, sh_id, odt_id, dc_id, userId
     ];
-    const query = `INSERT INTO \`order\`(od_date, od_qtytotal, od_sumdetail, od_discounttotal, od_paytype, od_net, od_pay, od_change, od_status, note, sh_id, odt_id, dc_id, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
-    connection.query(query, values, (err, results) => {
-        if (!err) {
-            const detailQuery = `
-            INSERT INTO orderdetail (
-                od_id, sm_id, odde_qty, odde_sum) VALUES ?;
-        `;
-            const detailValues = selectedItems.map(detail => [
-                results.insertId,
-                detail.sm_id,
-                detail.quantity,
-                detail.quantity * detail.sm_price,
-            ]);
-            connection.query(detailQuery, [detailValues], (err, resultsAll) => {
-                if (!err) {
-                    return res.status(200).json({ message: "success" });
-                } else {
-                    console.error("MySQL Error detail:", err);
-                    return res.status(500).json({ message: "error detail", error: err });
+
+    try {
+        // Insert into order table
+        const orderResult = await queryPromise(
+            `INSERT INTO \`order\` (od_date, od_qtytotal, od_sumdetail, od_discounttotal, od_paytype, 
+            od_net, od_pay, od_change, od_status, note, sh_id, odt_id, dc_id, user_id) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            orderValues
+        );
+
+        const orderId = orderResult.insertId;
+
+        // Insert into orderdetail table
+        const orderDetailValues = [
+            ...selectedItems.map(item => [orderId, item.sm_id, item.quantity, item.sm_price * item.quantity]),
+            ...freeItems.map(item => [orderId, item.smfree_id, item.quantity, 0])
+        ];
+
+        const orderDetailResult = await queryPromise(
+            `INSERT INTO orderdetail (od_id, sm_id, odde_qty, odde_sum) VALUES ?`,
+            [orderDetailValues]
+        );
+
+        let odde_id = orderDetailResult.insertId;
+
+        // Process items (both selected and free)
+        const processItems = async (items, isFreeItems = false) => {
+            for (const item of items) {
+                const sm_id = isFreeItems ? item.smfree_id : item.sm_id;
+
+                // Get salesmenu details
+                const salesMenuDetails = await queryPromise(
+                    `SELECT smde_id, pd_id, qty AS sm_qty FROM salesmenudetail WHERE sm_id = ?`,
+                    [sm_id]
+                );
+
+                if (salesMenuDetails.length === 0) continue;
+
+                const { smde_id, pd_id, sm_qty } = salesMenuDetails[0];
+                let remainingQtyToDeduct = item.quantity * sm_qty;
+
+                // Get available production order details, ordered by pdod_id (FIFO)
+                const productionOrderDetails = await queryPromise(
+                    `SELECT pdod_id, pdod_stock FROM productionorderdetail 
+                    WHERE pd_id = ? AND status IN (3, 4) AND pdod_stock > 0
+                    ORDER BY pdod_id ASC`,
+                    [pd_id]
+                );
+
+                for (const pod of productionOrderDetails) {
+                    if (remainingQtyToDeduct <= 0) break;
+
+                    const deductQty = Math.min(remainingQtyToDeduct, pod.pdod_stock);
+                    const newStock = pod.pdod_stock - deductQty;
+
+                    // Update production order detail stock
+                    await queryPromise(
+                        `UPDATE productionorderdetail SET pdod_stock = ? WHERE pdod_id = ?`,
+                        [newStock, pod.pdod_id]
+                    );
+
+                    // Insert into orderdetailsalesmenu
+                    await queryPromise(
+                        `INSERT INTO orderdetailsalesmenu (odde_id, smde_id, pdod_id, qty) 
+                        VALUES (?, ?, ?, ?)`,
+                        [odde_id, smde_id, pod.pdod_id, deductQty]
+                    );
+
+                    // Insert into promotionorderdetail (only for non-free items)
+                    await queryPromise(
+                        `INSERT INTO promotionorderdetail (pdod_id, odde_id, qty) 
+                            VALUES (?, ?, ?)`,
+                        [pod.pdod_id, odde_id, deductQty]
+                    );
+
+
+                    remainingQtyToDeduct -= deductQty;
                 }
-            });
 
-        } else {
-            console.error("MySQL Error:", err);
-            return res.status(500).json({ message: "error", error: err });
-        }
+                if (remainingQtyToDeduct > 0) {
+                    throw new Error(`Insufficient stock for product ID: ${pd_id}`);
+                }
+
+                odde_id++;
+            }
+        };
+
+        // Process selected items and free items
+        await processItems(selectedItems);
+        await processItems(freeItems, true);
+
+        res.status(200).json({ message: "Order processed successfully", orderId });
+    } catch (error) {
+        console.error("Error processing order:", error);
+        res.status(500).json({ message: "Error processing order", error: error.message });
+    }
+});
+
+
+// ฟังก์ชันเพื่อแปลงการ query แบบ callback เป็น promise
+const queryPromise = (query, params) => {
+    return new Promise((resolve, reject) => {
+        connection.query(query, params, (err, results) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(results);
+            }
+        });
     });
+};
 
-})
+
+
+
+
+
+
+
+
+
+
+
+
 
 router.get('/order', (req, res, next) => {
     const od_id = Number(req.params.od_id);
@@ -308,117 +444,6 @@ router.get('/latest', (req, res, next) => {
     });
 });
 
-
-//dash
-
-
-//ขายดีรวม
-// async function getOrderDetails(req, res) {
-//     try {
-//         const { startDate, endDate } = req.query;
-
-//         const sql = `
-//         SELECT 
-//             DATE_FORMAT(o.created_at, '%Y-%m-%d') AS ocreated_at,
-//             od.*,
-//             s.*
-//         FROM orderdetail od
-//         JOIN \`order\` o ON o.od_id = od.od_id  
-//         JOIN salesmenu s ON s.sm_id = od.sm_id  
-//         LEFT JOIN salesmenutype st ON s.smt_id = st.smt_id          
-//         WHERE DATE(o.created_at) BETWEEN ? AND ?
-//     `;
-    
-//         connection.query(sql, [startDate, endDate], (err, results) => {
-//             if (err) {
-//                 console.error('Error executing query:', err);
-//                 res.status(500).json({ message: 'Database query failed' });
-//             } else {
-//                 // จัดกลุ่มผลลัพธ์ตาม pd_id และ pd_name พร้อมตรวจสอบค่าซ้ำ
-//                 const groupedResults = results.reduce((acc, row) => {
-//                     const { sm_id, sm_name, smt_name, odde_sum,odde_id, odde_qty, od_id,ocreated_at, pdod_id, pdocreated_at, induP_id, qty } = row;
-
-//                     // ค้นหาว่ามี pd_id นี้อยู่ใน acc หรือไม่
-//                     let sm = acc.find(item => item.sm_id === sm_id);
-
-//                     if (!sm) {
-//                         // ถ้ายังไม่มีใน acc ให้เพิ่มผลิตภัณฑ์ใหม่
-//                         sm = {
-//                             sm: sm_id,
-//                             sm_name: sm_name,
-//                             smt_name: smt_name,
-//                             totalprice: 0, 
-//                             totalqty:0,// เพิ่มฟิลด์ totalCost เพื่อใช้ในแดชบอร์ด
-//                             orderdetail: []
-//                         };
-//                         acc.push(sm);
-//                     }
-
-//                     // ค้นหาว่า pdo_id และ pdod_id นี้มีอยู่ใน used หรือไม่
-//                     let orderdetailEntry = sm.orderdetail.find(item => item.odde_id === odde_id && item.odde_sum === odde_sum);
-
-//                     if (!orderdetailEntry) {
-//                         // ถ้ายังไม่มีให้สร้าง entry ใหม่พร้อม sumcost
-//                         orderdetailEntry = {
-//                             odde_id: odde_id,
-//                             odde_sum: odde_sum,
-//                             odde_qty: odde_qty,
-//                             od_id: od_id,
-//                             ocreated_at:ocreated_at
-//                             // un_name: un_name,
-//                             // qtyUsed: qty,
-//                             // sumCost: 0,
-//                             // perPiece: 0,
-//                             // detail: []
-//                         };
-//                         sm.orderdetail.push(orderdetailEntry);
-//                         sm.totalprice = parseFloat((orderdetailEntry.totalprice + row.odde_sum).toFixed(2));
-//                         sm.totalqty = parseInt((orderdetailEntry.totalqty + row.odde_qty));
-
-//                     }
-
-//                     // ตรวจสอบว่า detail มีข้อมูลนี้อยู่หรือไม่
-//                     // const detailExists = usedEntry.detail.some(detailItem =>
-//                     //     detailItem.induP_id === row.induP_id && detailItem.indlde_id === row.indlde_id
-//                     // );
-
-//                     // if (!detailExists) {
-//                     //     // เพิ่มรายละเอียดของการใช้ส่วนประกอบลงใน detail
-//                     //     usedEntry.detail.push({
-//                     //         induP_id: row.induP_id,
-//                     //         indlde_id: row.indlde_id,
-//                     //         qtyUseSum: row.qtyusesum,
-//                     //         price: row.price,
-//                     //         status: row.status,
-//                     //         scrap: row.scrap,
-//                     //         qtyPurchased: row.qtypurchased,
-//                     //         qtyPerUnit: row.qty_per_unit,
-//                     //         createdAt: row.created_at,
-//                     //         costIngredient: row.costingredient
-//                     //     });
-
-//                     //     // เพิ่ม costingredient ลงใน sumCost ของ usedEntry
-//                     //     // อัปเดต sumCost และ perPiece ให้เป็นตัวเลขที่มีทศนิยม 2 ตำแหน่ง
-//                     //     usedEntry.sumCost = parseFloat((usedEntry.sumCost + row.costingredient).toFixed(2));
-//                     //     usedEntry.perPiece = parseFloat((usedEntry.sumCost / usedEntry.qtyUsed).toFixed(2));
-
-//                     //     // อัปเดต totalCost ของ product ด้วยค่า sumCost ของ usedEntry และทศนิยม 2 ตำแหน่ง
-//                     //     product.totalCost = parseFloat((product.totalCost + row.costingredient).toFixed(2));
-
-//                     // }
-
-//                     return acc;
-//                 }, []);
-
-//                 // ส่งข้อมูลที่จัดกลุ่มและกรองแล้วกลับไปยัง client
-//                 res.status(200).json(groupedResults);
-//             }
-//         });
-//     } catch (error) {
-//         console.error('Error fetching ingredient used details:', error);
-//         res.status(500).json({ message: 'Server error' });
-//     }
-// }
 
 
 
